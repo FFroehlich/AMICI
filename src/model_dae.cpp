@@ -164,14 +164,36 @@ void Model_DAE::fdxdotdp(
     const realtype t, const const_N_Vector x, const const_N_Vector dx
 ) {
     auto x_pos = computeX_pos(x);
+    fdwdp(t, N_VGetArrayPointerConst(x_pos));
 
     if (pythonGenerated) {
-        // python generated, not yet implemented for DAEs
-        throw AmiException("Wrapping of DAEs is not yet implemented from Python"
-        );
+        // python generated
+        derived_state_.dxdotdp_explicit.zero();
+        derived_state_.dxdotdp_implicit.zero();
+        if (derived_state_.dxdotdp_explicit.capacity()) {
+            fdxdotdp_explicit_colptrs(derived_state_.dxdotdp_explicit);
+            fdxdotdp_explicit_rowvals(derived_state_.dxdotdp_explicit);
+            fdxdotdp_explicit(
+                derived_state_.dxdotdp_explicit.data(), t,
+                N_VGetArrayPointerConst(x_pos),
+                state_.unscaledParameters.data(), state_.fixedParameters.data(),
+                state_.h.data(), N_VGetArrayPointerConst(dx), derived_state_.w_.data()
+                );
+        }
+
+        fdxdotdw(t, x_pos, dx);
+        /* Sparse matrix multiplication
+         dxdotdp_implicit += dxdotdw * dwdp */
+        derived_state_.dxdotdw_.sparse_multiply(
+            derived_state_.dxdotdp_implicit, derived_state_.dwdp_
+            );
+
+        derived_state_.dxdotdp_full.sparse_add(
+            derived_state_.dxdotdp_explicit, 1.0,
+            derived_state_.dxdotdp_implicit, 1.0
+            );
     } else {
         // matlab generated
-        fdwdp(t, N_VGetArrayPointerConst(x_pos));
 
         for (int ip = 0; ip < nplist(); ip++) {
             N_VConst(0.0, derived_state_.dxdotdp.getNVector(ip));
@@ -496,9 +518,15 @@ void Model_DAE::fsxdot(
     }
 
     if (pythonGenerated) {
-        // python generated, not yet implemented for DAEs
-        throw AmiException("Wrapping of DAEs is not yet implemented from Python"
-        );
+        /* copy dxdotdp and the implicit version over */
+        // initialize
+        N_VConst(0.0, sxdot);
+        realtype* sxdot_tmp = N_VGetArrayPointer(sxdot);
+
+        derived_state_.dxdotdp_full.scatter(
+            plist(ip), 1.0, nullptr, gsl::make_span(sxdot_tmp, nx_solver), 0,
+            nullptr, 0
+            );
     } else {
         /* copy dxdotdp over */
         N_VScale(1.0, derived_state_.dxdotdp.getNVector(ip), sxdot);
