@@ -76,11 +76,14 @@ def test_sbml_testsuite_case(test_number, result_path, sbml_semantic_cases_dir):
             current_test_path,
             test_id,
             model_dir,
-            generate_sensitivity_code=test_id in sensitivity_check_cases,
+            generate_sensitivity_code=True,
         )
         settings = read_settings_file(current_test_path, test_id)
 
         atol, rtol = apply_settings(settings, solver, model, test_id)
+
+        solver.setSensitivityOrder(amici.SensitivityOrder.first)
+        solver.setSensitivityMethod(amici.SensitivityMethod.forward)
 
         # simulate model
         rdata = amici.runAmiciSimulation(model, solver)
@@ -98,8 +101,6 @@ def test_sbml_testsuite_case(test_number, result_path, sbml_semantic_cases_dir):
 
         # check sensitivities for selected models
         if epsilon := sensitivity_check_cases.get(test_id):
-            solver.setSensitivityOrder(amici.SensitivityOrder.first)
-            solver.setSensitivityMethod(amici.SensitivityMethod.forward)
             check_derivatives(model, solver, epsilon=epsilon)
 
     except amici.sbml_import.SBMLException as err:
