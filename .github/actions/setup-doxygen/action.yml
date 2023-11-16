@@ -1,0 +1,20 @@
+name: Set up doxygen
+description: |
+  Download, build, and install doxygen.
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install apt dependencies for doxygen
+      run: |
+        sudo apt-get update \
+          && sudo apt-get install -y \
+              bison \
+              ragel \
+              graphviz \
+              texlive-latex-extra
+      shell: bash
+
+    - name: Download and build doxygen
+      run: sudo scripts/downloadAndBuildDoxygen.sh
+      shell: bash

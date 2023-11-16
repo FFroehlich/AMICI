@@ -208,8 +208,15 @@ class SteadystateProblem {
 
     /**
      * @brief Stores state and throws an exception if equilibration failed
+     * @param tried_newton_1 Whether any Newton step was attempted before
+     * simulation
+     * @param tried_simulation Whether simulation was attempted
+     * @param tried_newton_2 Whether any Newton step was attempted after
+     * simulation
      */
-    [[noreturn]] void handleSteadyStateFailure();
+    [[noreturn]] void handleSteadyStateFailure(
+        bool tried_newton_1, bool tried_simulation, bool tried_newton_2
+    );
 
     /**
      * @brief Assembles the error message to be thrown.

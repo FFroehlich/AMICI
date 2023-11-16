@@ -27,7 +27,7 @@ The AMICI logo is released under the Creative Commons CC0 1.0 Universal
 
 * Parts of the *SUNDIALS* solver suite are redistributed under the BSD 3-Clause
   License (BSD-3-Clause) with terms given in
-  `ThirdParty/SuiteSparse/LICENSE.txt`
+  `ThirdParty/sundials/LICENSE`
 * Parts of *SuiteSparse* are redistributed under the various licenses with the
   terms given in `ThirdParty/SuiteSparse/LICENSE.txt`
 * *gsl-lite* is redistributed under the MIT License (MIT) with the terms given

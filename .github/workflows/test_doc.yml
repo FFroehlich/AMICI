@@ -16,7 +16,6 @@ on:
 jobs:
   doxygen:
     name: Test Doxygen
-
     runs-on: ubuntu-22.04
 
     strategy:
@@ -32,26 +31,14 @@ jobs:
     - uses: actions/checkout@v3
     - run: git fetch --prune --unshallow
 
-    - name: apt
-      run: |
-        sudo apt-get update \
-          && sudo apt-get install -y \
-          bison \
-          ragel \
-          graphviz \
-          texlive-latex-extra
-
-    - name: Build doxygen
-      run: |
-        sudo scripts/downloadAndBuildDoxygen.sh
+    - name: Set up doxygen
+      uses: ./.github/actions/setup-doxygen
 
     - name: Run doxygen
-      run: |
-        scripts/run-doxygen.sh
+      run: scripts/run-doxygen.sh
 
   sphinx:
     name: Test Sphinx
-
     runs-on: ubuntu-22.04
 
     strategy:
@@ -68,11 +55,9 @@ jobs:
       - run: git fetch --prune --unshallow
 
       - run: echo "AMICI_DIR=$(pwd)" >> $GITHUB_ENV
-      - run: echo "SWIG=${AMICI_DIR}/ThirdParty/swig-4.1.1/install/bin/swig" >> $GITHUB_ENV
 
-      - name: Build doxygen
-        run: |
-          sudo scripts/downloadAndBuildDoxygen.sh
+      - name: Set up doxygen
+        uses: ./.github/actions/setup-doxygen
 
       # install amici dependencies
       - name: apt
@@ -85,10 +70,7 @@ jobs:
               pandoc \
               python3-venv \
 
-      - name: Build swig
-        run: |
-          sudo scripts/downloadAndBuildSwig.sh
+      - uses: ./.github/actions/setup-swig
 
       - name: sphinx
-        run: |
-          scripts/run-sphinx.sh
+        run: scripts/run-sphinx.sh

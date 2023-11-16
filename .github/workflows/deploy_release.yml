@@ -24,12 +24,10 @@ jobs:
       with:
         fetch-depth: 20
 
-    - run: echo "AMICI_DIR=$(pwd)" >> $GITHUB_ENV
-    - run: echo "SWIG=${AMICI_DIR}/ThirdParty/swig-4.0.1/install/bin/swig" >> $GITHUB_ENV
+    - name: Set up SWIG
+      uses: ./.github/actions/setup-swig
 
-    - name: Build swig4
-      run: |
-        sudo scripts/downloadAndBuildSwig.sh
+    - run: echo "AMICI_DIR=$(pwd)" >> $GITHUB_ENV
 
     - name: sdist
       run: |

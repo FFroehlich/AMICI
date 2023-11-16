@@ -10,8 +10,11 @@ from typing import Dict, Iterator, List, Literal, Union
 
 import amici
 import numpy as np
+import sympy as sp
 
 from . import ExpData, ExpDataPtr, Model, ReturnData, ReturnDataPtr
+
+StrOrExpr = Union[str, sp.Expr]
 
 
 class SwigPtrView(collections.abc.Mapping):
@@ -134,7 +137,8 @@ class SwigPtrView(collections.abc.Mapping):
 
         :returns: SwigPtrView deep copy
         """
-        other = SwigPtrView(self._swigptr)
+        # We assume we have a copy-ctor for the swigptr object
+        other = self.__class__(copy.deepcopy(self._swigptr))
         other._field_names = copy.deepcopy(self._field_names)
         other._field_dimensions = copy.deepcopy(self._field_dimensions)
         other._cache = copy.deepcopy(self._cache)
@@ -147,6 +151,18 @@ class SwigPtrView(collections.abc.Mapping):
         :returns: string representation
         """
         return f"<{self.__class__.__name__}({self._swigptr})>"
+
+    def __eq__(self, other):
+        """
+        Equality check
+
+        :param other: other object
+
+        :returns: whether other object is equal to this object
+        """
+        if not isinstance(other, self.__class__):
+            return False
+        return self._swigptr == other._swigptr
 
 
 class ReturnDataView(SwigPtrView):
@@ -294,6 +310,10 @@ class ReturnDataView(SwigPtrView):
 
         return super().__getitem__(item)
 
+    def __repr__(self):
+        status = amici.simulation_status_to_str(self._swigptr.status)
+        return f"<{self.__class__.__name__}(id={self._swigptr.id!r}, status={status})>"
+
     def by_id(
         self, entity_id: str, field: str = None, model: Model = None
     ) -> np.array:
@@ -337,9 +357,13 @@ class ExpDataView(SwigPtrView):
     """
     Interface class for C++ Exp Data objects that avoids possibly costly
     copies of member data.
+
+    NOTE: This currently assumes that the underlying :class:`ExpData`
+    does not change after instantiating an :class:`ExpDataView`.
     """
 
     _field_names = [
+        "ts",
         "observedData",
         "observedDataStdDev",
         "observedEvents",
@@ -360,7 +384,9 @@ class ExpDataView(SwigPtrView):
                 f"Unsupported pointer {type(edata)}, must be"
                 f"amici.ExpDataPtr!"
             )
-        self._field_dimensions = {  # observables
+        self._field_dimensions = {
+            "ts": [edata.nt()],
+            # observables
             "observedData": [edata.nt(), edata.nytrue()],
             "observedDataStdDev": [edata.nt(), edata.nytrue()],
             # event observables
@@ -375,6 +401,7 @@ class ExpDataView(SwigPtrView):
                 len(edata.fixedParametersPreequilibration)
             ],
         }
+        edata.ts = edata.ts_
         edata.observedData = edata.getObservedData()
         edata.observedDataStdDev = edata.getObservedDataStdDev()
         edata.observedEvents = edata.getObservedEvents()
@@ -429,3 +456,28 @@ def _entity_type_from_id(
                 return symbol
 
     raise KeyError(f"Unknown symbol {entity_id}.")
+
+
+def evaluate(expr: StrOrExpr, rdata: ReturnDataView) -> np.array:
+    """Evaluate a symbolic expression based on the given simulation outputs.
+
+    :param expr:
+        A symbolic expression, e.g. a sympy expression or a string that can be sympified.
+        Can include state variable, expression, and observable IDs, depending on whether
+        the respective data is available in the simulation results.
+        Parameters are not yet supported.
+    :param rdata:
+        The simulation results.
+
+    :return:
+        The evaluated expression for the simulation output timepoints.
+    """
+    from sympy.utilities.lambdify import lambdify
+
+    if isinstance(expr, str):
+        expr = sp.sympify(expr)
+
+    arg_names = list(sorted(expr.free_symbols, key=lambda x: x.name))
+    func = lambdify(arg_names, expr, "numpy")
+    args = [rdata.by_id(arg.name) for arg in arg_names]
+    return func(*args)

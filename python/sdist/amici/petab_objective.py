@@ -516,6 +516,7 @@ def create_parameter_mapping(
             observable_df=petab_problem.observable_df,
             mapping_df=petab_problem.mapping_df,
             model=petab_problem.model,
+            simulation_conditions=simulation_conditions,
             **dict(
                 default_parameter_mapping_kwargs, **parameter_mapping_kwargs
             ),

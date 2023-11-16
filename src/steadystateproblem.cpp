@@ -60,9 +60,9 @@ SteadystateProblem::SteadystateProblem(Solver const& solver, Model const& model)
                            "sensitivities during simulation");
     if (solver.getSensitivityMethod() == SensitivityMethod::forward
         && model.getSteadyStateComputationMode()
-            == SteadyStateComputationMode::newtonOnly
+               == SteadyStateComputationMode::newtonOnly
         && model.getSteadyStateSensitivityMode()
-            == SteadyStateSensitivityMode::integrationOnly)
+               == SteadyStateSensitivityMode::integrationOnly)
         throw AmiException("For forward sensitivity analysis steady-state "
                            "computation mode 'newtonOnly' and steady-state "
                            "sensitivity mode 'integrationOnly' are not "
@@ -152,7 +152,10 @@ void SteadystateProblem::findSteadyState(
 
     /* Nothing worked, throw an as informative error as possible */
     if (!checkSteadyStateSuccess())
-        handleSteadyStateFailure();
+        handleSteadyStateFailure(
+            !turnOffNewton, !turnOffSimulation,
+            !turnOffNewton && !turnOffSimulation
+        );
 }
 
 void SteadystateProblem::findSteadyStateByNewtonsMethod(
@@ -394,16 +397,23 @@ void SteadystateProblem::getQuadratureBySimulation(
     }
 }
 
-[[noreturn]] void SteadystateProblem::handleSteadyStateFailure() {
+[[noreturn]] void SteadystateProblem::handleSteadyStateFailure(
+    bool tried_newton_1, bool tried_simulation, bool tried_newton_2
+) {
     /* Throw error message according to error codes */
-    std::string errorString = "Steady state computation failed. "
-                              "First run of Newton solver failed";
-    writeErrorString(&errorString, steady_state_status_[0]);
-    errorString.append(" Simulation to steady state failed");
-    writeErrorString(&errorString, steady_state_status_[1]);
-    errorString.append(" Second run of Newton solver failed");
-    writeErrorString(&errorString, steady_state_status_[2]);
-
+    std::string errorString = "Steady state computation failed.";
+    if (tried_newton_1) {
+        errorString.append(" First run of Newton solver failed");
+        writeErrorString(&errorString, steady_state_status_[0]);
+    }
+    if (tried_simulation) {
+        errorString.append(" Simulation to steady state failed");
+        writeErrorString(&errorString, steady_state_status_[1]);
+    }
+    if (tried_newton_2) {
+        errorString.append(" Second run of Newton solver failed");
+        writeErrorString(&errorString, steady_state_status_[2]);
+    }
     throw AmiException(errorString.c_str());
 }
 

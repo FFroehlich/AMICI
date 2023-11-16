@@ -34,20 +34,17 @@ jobs:
     - uses: actions/checkout@v3
     - run: git fetch --prune --unshallow
 
+    - name: Install apt dependencies
+      uses: ./.github/actions/install-apt-dependencies
+
     # install amici dependencies
     - name: apt
       run: |
         sudo apt-get update \
           && sudo apt-get install -y \
             cmake \
-            g++ \
-            libatlas-base-dev \
-            libboost-serialization-dev \
-            libhdf5-serial-dev \
             python3-venv \
-            swig \
-            valgrind \
-            libboost-math-dev
+            valgrind
 
     - name: Build AMICI
       run: |
@@ -78,20 +75,17 @@ jobs:
     - uses: actions/checkout@v3
     - run: git fetch --prune --unshallow
 
+    - name: Install apt dependencies
+      uses: ./.github/actions/install-apt-dependencies
+
     # install amici dependencies
     - name: apt
       run: |
         sudo apt-get update \
           && sudo apt-get install -y \
             cmake \
-            g++ \
-            libatlas-base-dev \
-            libboost-serialization-dev \
-            libhdf5-serial-dev \
             python3-venv \
-            swig \
-            valgrind \
-            libboost-math-dev
+            valgrind
 
     - name: Build AMICI
       run: |

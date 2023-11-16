@@ -35,11 +35,9 @@ jobs:
       with:
         fetch-depth: 20
 
-    # install dependencies
-    - name: apt
-      run: |
-        sudo apt-get update \
-          && sudo apt-get install -y swig libatlas-base-dev
+    - name: Install apt dependencies
+      uses: ./.github/actions/install-apt-dependencies
+
     - run: pip3 install petab shyaml build
 
     - run: echo "${HOME}/.local/bin/" >> $GITHUB_PATH

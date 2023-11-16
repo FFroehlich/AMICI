@@ -3,7 +3,7 @@ Plotting
 --------
 Plotting related functions
 """
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Sequence, Union
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -11,6 +11,7 @@ import seaborn as sns
 from matplotlib.axes import Axes
 
 from . import Model, ReturnDataView
+from .numpy import StrOrExpr, evaluate
 
 
 def plot_state_trajectories(
@@ -115,3 +116,26 @@ def plot_jacobian(rdata: ReturnDataView):
 # backwards compatibility
 plotStateTrajectories = plot_state_trajectories
 plotObservableTrajectories = plot_observable_trajectories
+
+
+def plot_expressions(
+    exprs: Union[Sequence[StrOrExpr], StrOrExpr], rdata: ReturnDataView
+) -> None:
+    """Plot the given expressions evaluated on the given simulation outputs.
+
+    :param exprs:
+        A symbolic expression, e.g. a sympy expression or a string that can be sympified.
+        Can include state variable, expression, and observable IDs, depending on whether
+        the respective data is available in the simulation results.
+        Parameters are not yet supported.
+    :param rdata:
+        The simulation results.
+    """
+    if not isinstance(exprs, Sequence) or isinstance(exprs, str):
+        exprs = [exprs]
+
+    for expr in exprs:
+        plt.plot(rdata.t, evaluate(expr, rdata), label=str(expr))
+
+    plt.legend()
+    plt.gca().set_xlabel("$t$")

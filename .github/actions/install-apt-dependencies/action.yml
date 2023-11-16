@@ -1,0 +1,16 @@
+name: Install apt dependencies
+description: Install apt dependencies for the AMICI Python package
+runs:
+  using: "composite"
+  steps:
+    - run: |
+        sudo apt-get update \
+          && sudo apt-get install -y \
+              g++ \
+              libatlas-base-dev \
+              libboost-chrono-dev \
+              libboost-math-dev \
+              libboost-serialization-dev \
+              libhdf5-serial-dev \
+              swig
+      shell: bash

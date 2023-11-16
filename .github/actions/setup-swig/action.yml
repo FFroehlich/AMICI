@@ -1,0 +1,20 @@
+name: Set up SWIG
+description: |
+  Download and build SWIG and set the SWIG environment variable to the path of
+  the SWIG executable.
+
+inputs:
+  swig_version:
+    description: 'Swig version to build'
+    required: false
+    default: '4.1.1'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Download and build SWIG
+      run: scripts/downloadAndBuildSwig.sh
+      shell: bash
+
+    - run: echo "SWIG=${AMICI_DIR}/ThirdParty/swig-${{ inputs.swig_version }}/install/bin/swig" >> $GITHUB_ENV
+      shell: bash

@@ -34,14 +34,14 @@ jobs:
         with:
           fetch-depth: 20
 
+      - name: Install apt dependencies
+        uses: ./.github/actions/install-apt-dependencies
+
       # install dependencies
       - name: apt
         run: |
           sudo apt-get update \
-            && sudo apt-get install -y \
-            swig \
-            libatlas-base-dev \
-            python3-venv
+            && sudo apt-get install -y python3-venv
 
       - name: Build BNGL
         run: |
