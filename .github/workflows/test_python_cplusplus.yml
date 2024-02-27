@@ -6,80 +6,60 @@ on:
   pull_request:
     branches:
       - master
+      - develop
 
 jobs:
-  build:
-    name: Tests Ubuntu
-
-    # TODO: prepare image with more deps preinstalled
+  ubuntu-cpp-python-tests:
+    name: C++/Python tests Ubuntu
     runs-on: ubuntu-22.04
-
-    env:
-      AMICI_PARALLEL_COMPILE: ""
-      ENABLE_GCOV_COVERAGE: "TRUE"
-      CI_SONARCLOUD: "TRUE"
 
     strategy:
       matrix:
-        python-version: [ 3.9 ]
+        python-version: [ "3.9" ]
 
     steps:
+    - name: Cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/pooch
+        key: ${{ runner.os }}-py${{ matrix.python-version }}-${{ github.job }}
+
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - run: git fetch --prune --unshallow
 
     - run: echo "AMICI_DIR=$(pwd)" >> $GITHUB_ENV
-    - run: echo "BNGPATH=${GITHUB_WORKSPACE}/ThirdParty/BioNetGen-2.7.0" >> $GITHUB_ENV
 
-    - name: Set up Sonar tools
-      uses: ./.github/actions/setup-sonar-tools
-
-    - name: Install apt dependencies
-      uses: ./.github/actions/install-apt-dependencies
-
-    # install amici dependencies
-    - name: apt
-      run: |
-        sudo apt-get update \
-          && sudo apt-get install -y \
-            cmake \
-            g++ \
-            python3-venv \
-            lcov \
-            libboost-math-dev
-
-    - name: Build AMICI dependencies
-      run: |
-        scripts/buildDependencies.sh
-
-    - name: Build AMICI
-      run: |
-        CI_SONARCLOUD=TRUE scripts/buildAmici.sh
+    - name: Set up AMICI C++ libraries
+      uses: ./.github/actions/setup-amici-cpp
 
     - name: C++ tests
-      run: |
-        scripts/run-cpp-tests.sh
+      run: scripts/run-cpp-tests.sh
 
     - name: Install python package
-      run: |
-        scripts/installAmiciSource.sh
+      run: scripts/installAmiciSource.sh
 
-    - name: Python tests
+    - name: Check OpenMP support
+      run: source build/venv/bin/activate && python -c "import amici; import sys; sys.exit(not amici.compiledWithOpenMP())"
+
+    - name: Python tests (part 1)
       run: |
         source build/venv/bin/activate \
         && pytest \
           --ignore-glob=*petab* \
           --ignore-glob=*test_splines.py \
+          --ignore-glob=*test_splines_short.py \
+          --ignore-glob=*test_pysb.py \
           --cov=amici \
           --cov-report=xml:"${AMICI_DIR}/build/coverage_py.xml" \
           --cov-append \
           --durations=10 \
           ${AMICI_DIR}/python/tests
-
 
     - name: Python tests splines
       if: ${{ github.base_ref == 'master' || github.event.merge_group.base_ref == 'master'}}
@@ -92,21 +72,9 @@ jobs:
           --durations=10 \
           ${AMICI_DIR}/python/tests/test_splines.py
 
-    - name: Install notebook dependencies
-      run: |
-        source build/venv/bin/activate \
-        && pip install jax[cpu]
-
-    - name: example notebooks
-      run: |
-        scripts/runNotebook.sh python/examples/example_*/
-
-    - name: doc notebooks
-      run: |
-        scripts/runNotebook.sh documentation/GettingStarted.ipynb
-
     - name: Codecov Python
-      uses: codecov/codecov-action@v3.1.0
+      if: github.event_name == 'pull_request' || github.repository_owner == 'AMICI-dev'
+      uses: codecov/codecov-action@v4
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         file: build/coverage_py.xml
@@ -114,7 +82,7 @@ jobs:
         fail_ci_if_error: true
         verbose: true
 
-    - name: lcov
+    - name: Capture coverage info (lcov)
       run: |
         lcov --compat-libtool --no-external \
         -d ${AMICI_DIR}/build/CMakeFiles/amici.dir/src \
@@ -125,7 +93,8 @@ jobs:
         && lcov -a coverage_cpp.info -a coverage_py.info -o coverage.info
 
     - name: Codecov CPP
-      uses: codecov/codecov-action@v3.1.0
+      if: github.event_name == 'pull_request' || github.repository_owner == 'AMICI-dev'
+      uses: codecov/codecov-action@v4
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         file: coverage.info
@@ -133,6 +102,7 @@ jobs:
         fail_ci_if_error: true
 
     - name: Run sonar-scanner
+      if: ${{ env.SONAR_TOKEN != '' }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -141,50 +111,199 @@ jobs:
          -Dsonar.cfamily.build-wrapper-output=bw-output \
          -Dsonar.projectVersion="$(git describe --abbrev=4 --dirty=-dirty --always --tags | tr -d '\n')"
 
-  osx:
-    name: Tests OSX
+  ubuntu-python-tests:
+    name: Python tests Ubuntu
+    runs-on: ubuntu-22.04
 
+    strategy:
+      matrix:
+        python-version: [ "3.9" ]
+
+    steps:
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - uses: actions/checkout@v4
+    - run: git fetch --prune --unshallow
+
+    - run: echo "AMICI_DIR=$(pwd)" >> $GITHUB_ENV
+
+    - name: Set up AMICI C++ libraries
+      uses: ./.github/actions/setup-amici-cpp
+
+    - name: Install python package
+      run: scripts/installAmiciSource.sh
+
+    - name: Python tests
+      run: |
+        source build/venv/bin/activate \
+        && pytest \
+          --cov=amici \
+          --cov-report=xml:"${AMICI_DIR}/build/coverage_py.xml" \
+          --cov-append \
+          --durations=10 \
+          ${AMICI_DIR}/python/tests/test_pysb.py \
+          ${AMICI_DIR}/python/tests/test_splines_short.py
+
+    - name: Codecov Python
+      if: github.event_name == 'pull_request' || github.repository_owner == 'AMICI-dev'
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        file: build/coverage_py.xml
+        flags: python
+        fail_ci_if_error: true
+        verbose: true
+
+    - name: Capture coverage info (lcov)
+      run: |
+        lcov --compat-libtool --no-external \
+        -d ${AMICI_DIR}/build/CMakeFiles/amici.dir/src \
+        -b ${AMICI_DIR} -c -o coverage_cpp.info \
+        && lcov --compat-libtool --no-external \
+        -d ${AMICI_DIR}/python/sdist/build/temp_amici/CMakeFiles/amici.dir/src \
+        -b ${AMICI_DIR}/python/sdist -c -o coverage_py.info \
+        && lcov -a coverage_cpp.info -a coverage_py.info -o coverage.info
+
+    - name: Codecov CPP
+      if: github.event_name == 'pull_request' || github.repository_owner == 'AMICI-dev'
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        file: coverage.info
+        flags: cpp_python
+        fail_ci_if_error: true
+
+    - name: Run sonar-scanner
+      if: ${{ env.SONAR_TOKEN != '' }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      run: |
+        sonar-scanner \
+         -Dsonar.cfamily.build-wrapper-output=bw-output \
+         -Dsonar.projectVersion="$(git describe --abbrev=4 --dirty=-dirty --always --tags | tr -d '\n')"
+
+
+  ubuntu-notebook-tests:
+    name: Notebook tests Ubuntu
+    runs-on: ubuntu-22.04
+
+    strategy:
+      matrix:
+        python-version: [ "3.9" ]
+
+    steps:
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - uses: actions/checkout@v4
+    - run: git fetch --prune --unshallow
+
+    - run: echo "AMICI_DIR=$(pwd)" >> $GITHUB_ENV
+
+    - name: Set up AMICI C++ libraries
+      uses: ./.github/actions/setup-amici-cpp
+
+    - name: Install python package
+      run: scripts/installAmiciSource.sh
+
+    - name: Install notebook dependencies
+      run: |
+        source build/venv/bin/activate \
+        && pip install jax[cpu]
+
+    - name: example notebooks
+      run: scripts/runNotebook.sh python/examples/example_*/
+
+    - name: doc notebooks
+      run: scripts/runNotebook.sh documentation/GettingStarted.ipynb
+
+    # TODO: Include notebooks in coverage report
+
+  macos_cpp_py:
+    name: Tests MacOS C++/Python
     runs-on: macos-latest
 
     steps:
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: 3.9
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - run: git fetch --prune --unshallow
 
-    - run: echo "AMICI_DIR=$(pwd)" >> $GITHUB_ENV
-    - run: echo "BNGPATH=${AMICI_DIR}/ThirdParty/BioNetGen-2.7.0" >> $GITHUB_ENV
-    # Ensure CMake is using the python version that we will use for the python tests later on
-    - run: echo "PYTHON_EXECUTABLE=${Python3_ROOT_DIR}/bin/python3" >> $GITHUB_ENV
+    - name: Install dependencies
+      uses: ./.github/actions/install-macos-dependencies
 
-    # install amici dependencies
     - name: homebrew
-      run: |
-        brew install hdf5 swig gcc cppcheck libomp boost \
-          && brew ls -v boost \
-          && brew ls -v libomp \
-          && echo LDFLAGS="-L/usr/local/lib/ -L/usr/local/Cellar/boost/1.81.0_1/lib/" >> $GITHUB_ENV \
-          && echo CPPFLAGS="-I /usr/local/Cellar/boost/1.81.0_1/include/" >> $GITHUB_ENV
+      run: brew install cppcheck
 
     - name: Build AMICI
-      run: |
-        scripts/buildAll.sh
+      run: scripts/buildAll.sh
 
     - name: Install python package
-      run: |
-        scripts/installAmiciSource.sh
+      run: scripts/installAmiciSource.sh
+
+    - name: Check OpenMP support
+      run: source build/venv/bin/activate && python -c "import amici; import sys; sys.exit(not amici.compiledWithOpenMP())"
 
     - name: cppcheck
-      run: |
-        scripts/run-cppcheck.sh
+      run: scripts/run-cppcheck.sh
+
+    - name: C++ tests
+      run: scripts/run-cpp-tests.sh
 
     - name: Python tests
       run: |
-        scripts/run-python-tests.sh
+        scripts/run-python-tests.sh \
+          test_pregenerated_models.py \
+          test_splines_short.py \
+          test_misc.py
 
-    - name: C++ tests
+
+  macos_python:
+    name: Tests MacOS Python
+    runs-on: macos-latest
+
+    steps:
+    - name: Cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/Library/Caches/pooch
+        key: ${{ runner.os }}-py${{ matrix.python-version }}-${{ github.job }}
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: 3.9
+
+    - uses: actions/checkout@v4
+    - run: git fetch --prune --unshallow
+
+    - name: Install dependencies
+      uses: ./.github/actions/install-macos-dependencies
+
+    - name: Install python package
       run: |
-        scripts/run-cpp-tests.sh
+        pip show numpy > /dev/null || python3 -m pip install numpy
+        scripts/installAmiciSource.sh
+
+    - name: Check OpenMP support
+      run: source build/venv/bin/activate && python -c "import amici; import sys; sys.exit(not amici.compiledWithOpenMP())"
+
+    - name: Get BioNetGen
+      run: scripts/buildBNGL.sh
+
+    - name: Python tests
+      run: |
+        scripts/run-python-tests.sh \
+          --ignore=test_pregenerated_models.py \
+          --ignore=test_splines_short.py \
+          --ignore=test_misc.py

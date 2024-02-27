@@ -13,12 +13,9 @@ from _pytest.outcomes import Skipped
 from amici import SteadyStateSensitivityMode
 from amici.gradient_check import check_derivatives as amici_check_derivatives
 from amici.logging import get_logger, set_log_level
-from amici.petab_import import import_petab_problem
-from amici.petab_objective import (
-    create_parameterized_edatas,
-    rdatas_to_measurement_df,
-    simulate_petab,
-)
+from amici.petab.conditions import create_parameterized_edatas
+from amici.petab.petab_import import import_petab_problem
+from amici.petab.simulations import rdatas_to_measurement_df, simulate_petab
 
 logger = get_logger(__name__, logging.DEBUG)
 set_log_level(get_logger("amici.petab_import"), logging.DEBUG)
@@ -65,7 +62,7 @@ def _test_case(case, model_type, version):
         petab_problem=problem,
         model_output_dir=model_output_dir,
         model_name=model_name,
-        force_compile=True,
+        compile_=True,
     )
     solver = model.getSolver()
     solver.setSteadyStateToleranceFactor(1.0)

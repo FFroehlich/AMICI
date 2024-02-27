@@ -5,6 +5,7 @@ import amici
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_array_equal
+from amici.testing import skip_on_valgrind
 
 
 @pytest.fixture
@@ -123,6 +124,7 @@ def get_results(
     return amici.runAmiciSimulation(model, solver, edata)
 
 
+@skip_on_valgrind
 def test_compare_conservation_laws_sbml(models, edata_fixture):
     # first, create the model
     model_with_cl, model_without_cl = models
@@ -288,6 +290,7 @@ def test_adjoint_pre_and_post_equilibration(models, edata_fixture):
             assert_allclose(raa_cl["sllh"], raa["sllh"], 1e-5, 1e-5)
 
 
+@skip_on_valgrind
 def test_get_set_model_settings(models):
     """test amici.(get|set)_model_settings cycles for models with and without
     conservation laws"""

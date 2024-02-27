@@ -3,7 +3,6 @@ added delete_molecules=True to egfr_dimer_degrade to conserve adapter proteins
 http://bionetgen.org/index.php/Egfr_simple
 """
 
-from __future__ import print_function
 
 from pysb import *
 

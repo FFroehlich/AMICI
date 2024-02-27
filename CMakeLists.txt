@@ -4,6 +4,11 @@
 cmake_minimum_required(VERSION 3.15)
 cmake_policy(VERSION 3.15...3.27)
 
+# cmake >=3.27
+if(POLICY CMP0144)
+  cmake_policy(SET CMP0144 NEW)
+endif(POLICY CMP0144)
+
 project(amici)
 
 # misc options
@@ -79,7 +84,12 @@ endif()
 
 # Debug build?
 if("$ENV{ENABLE_AMICI_DEBUGGING}" OR "$ENV{ENABLE_GCOV_COVERAGE}")
-  add_compile_options(-UNDEBUG -O0 -g)
+  add_compile_options(-UNDEBUG)
+  if(MSVC)
+    add_compile_options(-DEBUG)
+  else()
+    add_compile_options(-O0 -g)
+  endif()
   set(CMAKE_BUILD_TYPE "Debug")
 endif()
 
@@ -125,8 +135,9 @@ set(VENDORED_SUNDIALS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/sundials)
 set(VENDORED_SUNDIALS_BUILD_DIR ${VENDORED_SUNDIALS_DIR}/build)
 set(VENDORED_SUNDIALS_INSTALL_DIR ${VENDORED_SUNDIALS_BUILD_DIR})
 set(SUNDIALS_PRIVATE_INCLUDE_DIRS "${VENDORED_SUNDIALS_DIR}/src")
-find_package(SUNDIALS REQUIRED PATHS
-             "${VENDORED_SUNDIALS_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/cmake/sundials/")
+find_package(
+  SUNDIALS REQUIRED PATHS
+  "${VENDORED_SUNDIALS_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/cmake/sundials/")
 message(STATUS "Found SUNDIALS: ${SUNDIALS_DIR}")
 
 set(GSL_LITE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/gsl")
@@ -158,9 +169,35 @@ if(${BLAS} STREQUAL "MKL" OR DEFINED ENV{MKLROOT})
         -lmkl
         CACHE STRING "")
   endif()
-elseif(NOT DEFINED ENV{BLAS_LIBS} AND NOT DEFINED ENV{BLAS_CFLAGS})
+elseif(
+  NOT DEFINED ENV{BLAS_LIBS}
+  AND NOT DEFINED ENV{BLAS_CFLAGS}
+  AND NOT BLAS_FOUND)
   # if nothing is specified via environment variables, let's try FindBLAS
-  find_package(BLAS)
+  if($(CMAKE_VERSION) VERSION_GREATER_EQUAL 3.22)
+    set(BLA_SIZEOF_INTEGER 8)
+  endif()
+
+  if(APPLE AND (NOT DEFINED BLA_VENDOR OR BLA_VENDOR STREQUAL "All"))
+    set(BLA_VENDOR Apple)
+    find_package(BLAS)
+    if(BLAS_FOUND)
+      set_property(
+        TARGET BLAS::BLAS
+        APPEND
+        PROPERTY INTERFACE_COMPILE_DEFINITIONS ACCELERATE_NEW_LAPACK)
+      set_property(
+        TARGET BLAS::BLAS
+        APPEND
+        PROPERTY INTERFACE_COMPILE_DEFINITIONS ACCELERATE_LAPACK_ILP64)
+    else()
+      set(BLA_VENDOR "All")
+    endif()
+
+  endif()
+  if(NOT BLAS_FOUND)
+    find_package(BLAS)
+  endif()
   if(NOT BLAS_FOUND)
     # Nothing specified by the user and FindBLAS didn't find anything; let's try
     # if cblas is available on the system paths.

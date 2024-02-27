@@ -83,7 +83,7 @@ struct LogItem {
         , message(message){};
 
     /** Severity level */
-    LogSeverity severity;
+    LogSeverity severity = LogSeverity::error;
 
     /** Short identifier for the logged event */
     std::string identifier;

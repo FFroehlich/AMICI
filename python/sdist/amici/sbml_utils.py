@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import sympy as sp
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, Optional, Tuple, Union
+    from typing import Any, Union
 
     SbmlID = Union[str, sp.Symbol]
 
@@ -52,7 +52,7 @@ class SbmlAnnotationError(SBMLException):
 
 def create_sbml_model(
     model_id: str, level: int = 2, version: int = 5
-) -> Tuple[libsbml.SBMLDocument, libsbml.Model]:
+) -> tuple[libsbml.SBMLDocument, libsbml.Model]:
     """Helper for creating an empty SBML model.
 
     :param model_id:
@@ -116,10 +116,10 @@ def add_species(
     model: libsbml.Model,
     species_id: SbmlID,
     *,
-    compartment_id: Optional[str] = None,
-    name: Union[bool, str] = False,
+    compartment_id: str | None = None,
+    name: bool | str = False,
     initial_amount: float = 0.0,
-    units: Optional[str] = None,
+    units: str | None = None,
 ) -> libsbml.Species:
     """Helper for adding a species to a SBML model.
 
@@ -182,10 +182,10 @@ def add_parameter(
     model: libsbml.Model,
     parameter_id: SbmlID,
     *,
-    name: Union[bool, str] = False,
-    value: Optional[float] = None,
-    units: Optional[str] = None,
-    constant: Optional[bool] = None,
+    name: bool | str = False,
+    value: float | None = None,
+    units: str | None = None,
+    constant: bool | None = None,
 ) -> libsbml.Parameter:
     """Helper for adding a parameter to a SBML model.
 
@@ -239,7 +239,7 @@ def add_assignment_rule(
     model: libsbml.Model,
     variable_id: SbmlID,
     formula,
-    rule_id: Optional[str] = None,
+    rule_id: str | None = None,
 ) -> libsbml.AssignmentRule:
     """Helper for adding an assignment rule to a SBML model.
 
@@ -287,7 +287,7 @@ def add_rate_rule(
     model: libsbml.Model,
     variable_id: SbmlID,
     formula,
-    rule_id: Optional[str] = None,
+    rule_id: str | None = None,
 ) -> libsbml.RateRule:
     """
     Helper for adding a rate rule to a SBML model.
@@ -337,7 +337,7 @@ def add_inflow(
     species_id: SbmlID,
     rate,
     *,
-    reaction_id: Optional[str] = None,
+    reaction_id: str | None = None,
     reversible: bool = False,
 ) -> libsbml.Reaction:
     species_id = str(species_id)
@@ -364,9 +364,7 @@ def add_inflow(
     return reaction
 
 
-def get_sbml_units(
-    model: libsbml.Model, x: Union[SbmlID, sp.Basic]
-) -> Union[None, str]:
+def get_sbml_units(model: libsbml.Model, x: SbmlID | sp.Basic) -> None | str:
     """Try to get the units for expression `x`.
 
     :param model:
@@ -493,7 +491,7 @@ def mathml2sympy(
     mathml: str,
     *,
     evaluate: bool = False,
-    locals: Optional[Dict[str, Any]] = None,
+    locals: dict[str, Any] | None = None,
     expression_type: str = "mathml2sympy",
 ) -> sp.Basic:
     ast = libsbml.readMathMLFromString(mathml)
@@ -519,8 +517,8 @@ def mathml2sympy(
 
 
 def _parse_logical_operators(
-    math_str: Union[str, float, None]
-) -> Union[str, float, None]:
+    math_str: str | float | None,
+) -> str | float | None:
     """
     Parses a math string in order to replace logical operators by a form
     parsable for sympy

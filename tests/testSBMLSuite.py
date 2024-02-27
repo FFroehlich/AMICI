@@ -203,10 +203,12 @@ def verify_results(settings, rdata, expected, wrapper, model, atol, rtol):
     # collect parameters
     for par in model.getParameterIds():
         simulated[par] = rdata["ts"] * 0 + model.getParameterById(par)
-    # collect fluxes
+    # collect fluxes and other expressions
     for expr_idx, expr_id in enumerate(model.getExpressionIds()):
         if expr_id.startswith("flux_"):
             simulated[expr_id.removeprefix("flux_")] = rdata.w[:, expr_idx]
+        elif expr_id.removeprefix("amici_") not in simulated.columns:
+            simulated[expr_id] = rdata.w[:, expr_idx]
     # handle renamed reserved symbols
     simulated.rename(
         columns={c: c.replace("amici_", "") for c in simulated.columns},

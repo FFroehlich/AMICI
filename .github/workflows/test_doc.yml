@@ -24,11 +24,11 @@ jobs:
 
     steps:
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - run: git fetch --prune --unshallow
 
     - name: Set up doxygen
@@ -43,15 +43,15 @@ jobs:
 
     strategy:
       matrix:
-        python-version: [ "3.10" ]
+        python-version: [ "3.11" ]
 
     steps:
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: git fetch --prune --unshallow
 
       - run: echo "AMICI_DIR=$(pwd)" >> $GITHUB_ENV
@@ -59,18 +59,18 @@ jobs:
       - name: Set up doxygen
         uses: ./.github/actions/setup-doxygen
 
-      # install amici dependencies
-      - name: apt
+      - name: Install apt dependencies
+        uses: ./.github/actions/install-apt-dependencies
+
+      - name: Install further dependencies
         run: |
           sudo apt-get update \
             && sudo apt-get install -y \
-              g++ \
-              libatlas-base-dev \
-              libboost-serialization-dev \
               pandoc \
-              python3-venv \
+            && pip install tox
 
-      - uses: ./.github/actions/setup-swig
+      - name: Set up SWIG
+        uses: ./.github/actions/setup-swig
 
-      - name: sphinx
-        run: scripts/run-sphinx.sh
+      - name: Run sphinx
+        run: tox -e doc

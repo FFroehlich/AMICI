@@ -134,7 +134,7 @@ class BackwardProblem {
     /** state derivative of data likelihood */
     std::vector<realtype> dJydx_;
     /** state derivative of event likelihood */
-    const std::vector<realtype> dJzdx_;
+    std::vector<realtype> const dJzdx_;
 };
 
 } // namespace amici

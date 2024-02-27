@@ -1,6 +1,6 @@
 """Find conserved quantities deterministically"""
 
-from typing import List, Literal, Optional, Union
+from typing import Literal, Optional, Union
 
 import numpy as np
 
@@ -67,7 +67,7 @@ def rref(
     return mat
 
 
-def pivots(mat: np.array) -> List[int]:
+def pivots(mat: np.array) -> list[int]:
     """Get indices of pivot columns in ``mat``, assumed to be in reduced row
     echelon form"""
     pivot_cols = []

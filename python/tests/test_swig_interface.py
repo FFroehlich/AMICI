@@ -6,6 +6,8 @@ Test getters, setters, etc.
 import copy
 import numbers
 
+import pytest
+
 import amici
 import numpy as np
 
@@ -66,10 +68,7 @@ def test_copy_constructors(pysb_example_presimulation_module):
 model_instance_settings0 = {
     # setting name: [default value, custom value]
     "AddSigmaResiduals": [False, True],
-    "AlwaysCheckFinite": [
-        False,
-        True,
-    ],
+    "AlwaysCheckFinite": [False, True],
     # Skipped due to model dependency in `'InitialStates'`.
     "FixedParameters": None,
     "InitialStates": [
@@ -129,6 +128,13 @@ def test_model_instance_settings(pysb_example_presimulation_module):
 
     i_getter = 0
     i_setter = 1
+
+    # the default setting for AlwaysCheckFinite depends on whether the amici
+    # extension has been built in debug mode
+    model_instance_settings0["AlwaysCheckFinite"] = [
+        model0.getAlwaysCheckFinite(),
+        not model0.getAlwaysCheckFinite(),
+    ]
 
     # All settings are tested.
     assert set(model_instance_settings0) == set(
@@ -315,6 +321,7 @@ def test_unhandled_settings(pysb_example_presimulation_module):
         "setParametersByIdRegex",
         "setParametersByNameRegex",
         "setInitialStateSensitivities",
+        "get_trigger_timepoints",
     ]
     from amici.swig_wrappers import model_instance_settings
 
@@ -420,8 +427,6 @@ def test_solver_repr():
         for s in (solver, solver_ptr):
             assert "maxsteps" in str(s)
             assert "maxsteps" in repr(s)
-        # avoid double delete!!
-        solver_ptr.release()
 
 
 def test_edata_repr():
@@ -441,8 +446,6 @@ def test_edata_repr():
         for expected_str in expected_strs:
             assert expected_str in str(e)
             assert expected_str in repr(e)
-    # avoid double delete!!
-    edata_ptr.release()
 
 
 def test_edata_equality_operator():
@@ -470,3 +473,55 @@ def test_expdata_and_expdataview_are_deepcopyable():
     ev2 = copy.deepcopy(ev1)
     assert ev2._swigptr.this != ev1._swigptr.this
     assert ev1 == ev2
+
+
+def test_solvers_are_deepcopyable():
+    for solver_type in (amici.CVodeSolver, amici.IDASolver):
+        for solver1 in (solver_type(), amici.SolverPtr(solver_type())):
+            solver2 = copy.deepcopy(solver1)
+            assert solver1.this != solver2.this
+            assert (
+                solver1.getRelativeTolerance()
+                == solver2.getRelativeTolerance()
+            )
+            solver2.setRelativeTolerance(100 * solver2.getRelativeTolerance())
+            assert (
+                solver1.getRelativeTolerance()
+                != solver2.getRelativeTolerance()
+            )
+
+
+def test_model_is_deepcopyable(pysb_example_presimulation_module):
+    model_module = pysb_example_presimulation_module
+    for model1 in (
+        model_module.getModel(),
+        amici.ModelPtr(model_module.getModel()),
+    ):
+        model2 = copy.deepcopy(model1)
+        assert model1.this != model2.this
+        assert model1.t0() == model2.t0()
+        model2.setT0(100 + model2.t0())
+        assert model1.t0() != model2.t0()
+
+
+def test_rdataview(sbml_example_presimulation_module):
+    """Test some SwigPtrView functionality via ReturnDataView."""
+    model_module = sbml_example_presimulation_module
+    model = model_module.getModel()
+    rdata = amici.runAmiciSimulation(model, model.getSolver())
+    assert isinstance(rdata, amici.ReturnDataView)
+
+    # fields are accessible via dot notation and [] operator,
+    #  __contains__ and __getattr__ are implemented correctly
+    with pytest.raises(AttributeError):
+        _ = rdata.nonexisting_attribute
+
+    with pytest.raises(KeyError):
+        _ = rdata["nonexisting_attribute"]
+
+    assert not hasattr(rdata, "nonexisting_attribute")
+    assert "x" in rdata
+    assert rdata.x == rdata["x"]
+
+    # field names are included by dir()
+    assert "x" in dir(rdata)

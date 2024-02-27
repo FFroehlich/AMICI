@@ -1,5 +1,5 @@
 name: Deploy Branch
-on: [push, merge_group, workflow_dispatch]
+on: [push, pull_request, merge_group, workflow_dispatch]
 
 jobs:
   sdist:
@@ -13,11 +13,11 @@ jobs:
 
     steps:
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 20
 
@@ -31,7 +31,7 @@ jobs:
         scripts/buildSdist.sh
 
     - name: "Upload artifact: sdist"
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: sdist
         path: python/sdist/dist/amici-*.gz

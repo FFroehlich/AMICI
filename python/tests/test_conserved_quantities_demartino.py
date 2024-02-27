@@ -155,15 +155,15 @@ demartino2014_kernel_engaged_species = [
 def data_demartino2014():
     """Get tests from DeMartino2014 Suppl. Material"""
     import gzip
-    import io
-    import urllib.request
+    import pooch
 
     # stoichiometric matrix
-    response = urllib.request.urlopen(
-        r"https://github.com/AMICI-dev/AMICI/files/11430971/DeMartinoDe2014_test-ecoli.dat.gz",
-        timeout=10,
+    data = gzip.GzipFile(
+        pooch.retrieve(
+            "https://github.com/AMICI-dev/AMICI/files/11430971/DeMartinoDe2014_test-ecoli.dat.gz",
+            known_hash="md5:899873f8f1c413d13c3f8e94c1496b7e",
+        )
     )
-    data = gzip.GzipFile(fileobj=io.BytesIO(response.read()))
     S = [
         int(item)
         for sl in [
@@ -174,14 +174,13 @@ def data_demartino2014():
     ]
 
     # metabolite / row names
-    response = urllib.request.urlopen(
-        r"https://github.com/AMICI-dev/AMICI/files/11430970/test-ecoli-met.txt",
-        timeout=10,
-    )
-    row_names = [
-        entry.decode("ascii").strip() for entry in io.BytesIO(response.read())
-    ]
-
+    with open(
+        pooch.retrieve(
+            "https://github.com/AMICI-dev/AMICI/files/11430970/test-ecoli-met.txt",
+            known_hash="md5:d71e711a3655311390b38d00dcd6aa7f",
+        )
+    ) as f:
+        row_names = [entry.strip() for entry in f.readlines()]
     return S, row_names
 
 

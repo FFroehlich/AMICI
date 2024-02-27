@@ -1,6 +1,5 @@
 #ifndef amici_spline_h
 #define amici_spline_h
-#include <math.h>
 
 namespace amici {
 

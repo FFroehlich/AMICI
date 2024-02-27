@@ -10,7 +10,7 @@ namespace amici {
 
 namespace model_model_jakstat_adjoint_o2{
 
-void w_model_jakstat_adjoint_o2(realtype *w, const realtype t, const realtype *x, const realtype *p, const realtype *k, const realtype *h, const realtype *tcl, const realtype *spl) {
+void w_model_jakstat_adjoint_o2(realtype *w, const realtype t, const realtype *x, const realtype *p, const realtype *k, const realtype *h, const realtype *tcl, const realtype *spl, bool include_static) {
   w[0] = amici::spline_pos(t,5,0.0,p[5],5.0,p[6],1.0E1,p[7],2.0E1,p[8],6.0E1,p[9],0.0,0.0);
   w[1] = x[1]*x[1];
   w[2] = 1.0/k[0];

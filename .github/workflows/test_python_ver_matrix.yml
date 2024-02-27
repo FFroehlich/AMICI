@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.9', '3.10', '3.11']
+        python-version: ['3.9', '3.10', '3.11', '3.12']
         experimental: [false]
 
     steps:
@@ -33,28 +33,38 @@ jobs:
     - run: echo "BNGPATH=${AMICI_DIR}/ThirdParty/BioNetGen-2.7.0" >> $GITHUB_ENV
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 20
 
     - name: Install apt dependencies
       uses: ./.github/actions/install-apt-dependencies
 
-    # install AMICI
     - name: Build BNGL
-      run: |
-        scripts/buildBNGL.sh
+      run: scripts/buildBNGL.sh
+
     - name: Install python package
-      run: |
-        scripts/installAmiciSource.sh
+      run: scripts/installAmiciSource.sh
+
+    # until https://github.com/dateutil/dateutil >2.8.2 is released https://github.com/dateutil/dateutil/issues/1314
+    - run: source build/venv/bin/activate && pip3 install git+https://github.com/dateutil/dateutil.git@296d419fe6bf3b22897f8f210735ac9c4e1cb796
+      if: matrix.python-version == '3.12'
+
+    # install pysb before sympy to allow for sympy>=1.12 (https://github.com/pysb/pysb/commit/e83937cb8c74afc9b2fa96595b68464946745f33)
+    - run: source build/venv/bin/activate && pip3 install git+https://github.com/pysb/pysb
+
+    # until sympy>1.12 is released
+    - run: source build/venv/bin/activate && pip3 install git+https://github.com/sympy/sympy.git@master
+      if: matrix.python-version == '3.12'
 
     - name: Python tests
       run: |
         source build/venv/bin/activate \
-          && pip3 install git+https://github.com/pysb/pysb \
-          && python3 -m pytest --ignore-glob=*petab* \
+          && python3 -m pytest \
+            --durations=10 \
+            --ignore-glob=*petab* \
             --ignore-glob=*test_splines.py ${AMICI_DIR}/python/tests

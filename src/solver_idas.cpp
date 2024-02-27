@@ -100,7 +100,7 @@ static int fsxdot(
 /* Function implementations */
 
 void IDASolver::init(
-    const realtype t0, AmiVector const& x0, AmiVector const& dx0
+    realtype const t0, AmiVector const& x0, AmiVector const& dx0
 ) const {
     int status;
     solver_was_called_F_ = false;
@@ -122,7 +122,7 @@ void IDASolver::init(
 }
 
 void IDASolver::initSteadystate(
-    const realtype /*t0*/, AmiVector const& /*x0*/, AmiVector const& /*dx0*/
+    realtype const /*t0*/, AmiVector const& /*x0*/, AmiVector const& /*dx0*/
 ) const {
     /* We need to set the steadystate rhs function. SUndials doesn't have this
        in its public api, so we have to change it in the solver memory,
@@ -157,7 +157,7 @@ void IDASolver::sensInit1(AmiVectorArray const& sx0, AmiVectorArray const& sdx0)
 }
 
 void IDASolver::binit(
-    int const which, const realtype tf, AmiVector const& xB0,
+    int const which, realtype const tf, AmiVector const& xB0,
     AmiVector const& dxB0
 ) const {
     int status;
@@ -263,13 +263,13 @@ void IDASolver::allocateSolver() const {
         );
 }
 
-void IDASolver::setSStolerances(const realtype rtol, const realtype atol)
+void IDASolver::setSStolerances(realtype const rtol, realtype const atol)
     const {
     int status = IDASStolerances(solver_memory_.get(), rtol, atol);
     if (status != IDA_SUCCESS)
         throw IDAException(status, "IDASStolerances");
 }
-void IDASolver::setSensSStolerances(const realtype rtol, realtype const* atol)
+void IDASolver::setSensSStolerances(realtype const rtol, realtype const* atol)
     const {
     int status = IDASensSStolerances(
         solver_memory_.get(), rtol, const_cast<realtype*>(atol)
@@ -374,11 +374,11 @@ void IDASolver::resetState(
     ida_mem->ida_kk = 0;
 }
 
-void IDASolver::reInitPostProcessF(const realtype tnext) const {
+void IDASolver::reInitPostProcessF(realtype const tnext) const {
     reInitPostProcess(solver_memory_.get(), &t_, &x_, &dx_, tnext);
 }
 
-void IDASolver::reInitPostProcessB(const realtype tnext) const {
+void IDASolver::reInitPostProcessB(realtype const tnext) const {
     realtype tBret;
     auto ida_mem = static_cast<IDAMem>(solver_memory_.get());
     auto idaadj_mem = ida_mem->ida_adj_mem;
@@ -445,7 +445,7 @@ void IDASolver::reInitPostProcess(
 }
 
 void IDASolver::reInit(
-    const realtype t0, AmiVector const& yy0, AmiVector const& yp0
+    realtype const t0, AmiVector const& yy0, AmiVector const& yp0
 ) const {
 
     auto ida_mem = static_cast<IDAMem>(solver_memory_.get());
@@ -492,7 +492,7 @@ void IDASolver::sensToggleOff() const {
 }
 
 void IDASolver::reInitB(
-    int const which, const realtype tB0, AmiVector const& yyB0,
+    int const which, realtype const tB0, AmiVector const& yyB0,
     AmiVector const& ypB0
 ) const {
 
@@ -526,7 +526,7 @@ void IDASolver::setSensParams(
         throw IDAException(status, "IDASetSensParams");
 }
 
-void IDASolver::getDky(const realtype t, int const k) const {
+void IDASolver::getDky(realtype const t, int const k) const {
     int status = IDAGetDky(solver_memory_.get(), t, k, dky_.getNVector());
     if (status != IDA_SUCCESS)
         throw IDAException(status, "IDAGetDky");
@@ -540,7 +540,7 @@ void IDASolver::getSens() const {
         throw IDAException(status, "IDAGetSens");
 }
 
-void IDASolver::getSensDky(const realtype t, int const k) const {
+void IDASolver::getSensDky(realtype const t, int const k) const {
     int status
         = IDAGetSensDky(solver_memory_.get(), t, k, sx_.getNVectorArray());
     if (status != IDA_SUCCESS)
@@ -557,7 +557,7 @@ void IDASolver::getB(int const which) const {
         throw IDAException(status, "IDAGetB");
 }
 
-void IDASolver::getDkyB(const realtype t, int k, int const which) const {
+void IDASolver::getDkyB(realtype const t, int k, int const which) const {
     int status = IDAGetDky(
         IDAGetAdjIDABmem(solver_memory_.get(), which), t, k, dky_.getNVector()
     );
@@ -578,7 +578,7 @@ void IDASolver::getQuad(realtype& t) const {
         throw IDAException(status, "IDAGetQuad");
 }
 
-void IDASolver::getQuadDkyB(const realtype t, int k, int const which) const {
+void IDASolver::getQuadDkyB(realtype const t, int k, int const which) const {
     int status = IDAGetQuadDky(
         IDAGetAdjIDABmem(solver_memory_.get(), which), t, k, xQB_.getNVector()
     );
@@ -586,7 +586,7 @@ void IDASolver::getQuadDkyB(const realtype t, int k, int const which) const {
         throw IDAException(status, "IDAGetB");
 }
 
-void IDASolver::getQuadDky(const realtype t, int const k) const {
+void IDASolver::getQuadDky(realtype const t, int const k) const {
     int status = IDAGetQuadDky(solver_memory_.get(), t, k, xQ_.getNVector());
     if (status != IDA_SUCCESS)
         throw IDAException(status, "IDAGetQuadDky");
@@ -639,7 +639,7 @@ void IDASolver::allocateSolverB(int* which) const {
 }
 
 void IDASolver::setSStolerancesB(
-    int const which, const realtype relTolB, const realtype absTolB
+    int const which, realtype const relTolB, realtype const absTolB
 ) const {
     int status
         = IDASStolerancesB(solver_memory_.get(), which, relTolB, absTolB);
@@ -648,7 +648,7 @@ void IDASolver::setSStolerancesB(
 }
 
 void IDASolver::quadSStolerancesB(
-    int const which, const realtype reltolQB, const realtype abstolQB
+    int const which, realtype const reltolQB, realtype const abstolQB
 ) const {
     int status
         = IDAQuadSStolerancesB(solver_memory_.get(), which, reltolQB, abstolQB);
@@ -657,14 +657,14 @@ void IDASolver::quadSStolerancesB(
 }
 
 void IDASolver::quadSStolerances(
-    const realtype reltolQB, const realtype abstolQB
+    realtype const reltolQB, realtype const abstolQB
 ) const {
     int status = IDAQuadSStolerances(solver_memory_.get(), reltolQB, abstolQB);
     if (status != IDA_SUCCESS)
         throw IDAException(status, "IDAQuadSStolerances");
 }
 
-int IDASolver::solve(const realtype tout, int const itask) const {
+int IDASolver::solve(realtype const tout, int const itask) const {
     if (force_reinit_postprocess_F_)
         reInitPostProcessF(tout);
     int status = IDASolve(
@@ -677,7 +677,7 @@ int IDASolver::solve(const realtype tout, int const itask) const {
     return status;
 }
 
-int IDASolver::solveF(const realtype tout, int const itask, int* ncheckPtr)
+int IDASolver::solveF(realtype const tout, int const itask, int* ncheckPtr)
     const {
     if (force_reinit_postprocess_F_)
         reInitPostProcessF(tout);
@@ -691,7 +691,7 @@ int IDASolver::solveF(const realtype tout, int const itask, int* ncheckPtr)
     return status;
 }
 
-void IDASolver::solveB(const realtype tBout, int const itaskB) const {
+void IDASolver::solveB(realtype const tBout, int const itaskB) const {
     if (force_reinit_postprocess_B_)
         reInitPostProcessB(tBout);
     int status = IDASolveB(solver_memory_.get(), tBout, itaskB);
@@ -768,7 +768,7 @@ void IDASolver::calcIC(realtype tout1) const {
         throw IDAException(status, "IDACalcIC");
 }
 
-void IDASolver::calcICB(int const which, const realtype tout1) const {
+void IDASolver::calcICB(int const which, realtype const tout1) const {
     int status = IDACalcICB(
         solver_memory_.get(), which, tout1, xB_.getNVector(), dxB_.getNVector()
     );
@@ -776,7 +776,7 @@ void IDASolver::calcICB(int const which, const realtype tout1) const {
         throw IDAException(status, "IDACalcICB");
 }
 
-void IDASolver::setStopTime(const realtype tstop) const {
+void IDASolver::setStopTime(realtype const tstop) const {
     int status = IDASetStopTime(solver_memory_.get(), tstop);
     if (status != IDA_SUCCESS)
         throw IDAException(status, "IDASetStopTime");

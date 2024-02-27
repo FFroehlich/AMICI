@@ -25,7 +25,7 @@ else
 fi
 
 # required for build swig interface
-python3 -m pip install numpy
+pip show numpy > /dev/null || python3 -m pip install numpy
 
 ${cmake} \
   -Wdev -DAMICI_CXX_OPTIONS="-Wall;-Wextra${extra_cxx_flags}" \

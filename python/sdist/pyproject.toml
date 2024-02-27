@@ -15,3 +15,8 @@ build-backend = "setuptools.build_meta"
 
 [tool.black]
 line-length = 79
+
+[tool.ruff]
+line-length = 79
+ignore = ["E402", "F403", "F405", "E741"]
+extend-include = ["*.ipynb"]

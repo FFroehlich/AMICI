@@ -1,8 +1,10 @@
 import sympy as sp
 from amici.cxxcodeprinter import AmiciCxxCodePrinter
 from sympy.codegen.rewriting import optims_c99
+from amici.testing import skip_on_valgrind
 
 
+@skip_on_valgrind
 def test_optimizations():
     """Check that AmiciCxxCodePrinter handles optimizations correctly."""
     try:

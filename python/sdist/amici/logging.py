@@ -34,24 +34,24 @@ def _setup_logger(
     level: Optional[int] = logging.WARNING,
     console_output: Optional[bool] = True,
     file_output: Optional[bool] = False,
-    capture_warnings: Optional[bool] = True,
+    capture_warnings: Optional[bool] = False,
 ) -> logging.Logger:
     """
-    Set up a new logging.Logger for AMICI logging
+    Set up a new :class:`logging.Logger` for AMICI logging.
 
     :param level:
-        Logging level, typically using a constant like logging.INFO or
-        logging.DEBUG
+        Logging level, typically using a constant like :obj:`logging.INFO` or
+        :obj:`logging.DEBUG`
 
     :param console_output:
-        Set up a default console log handler if True (default)
+        Set up a default console log handler if ``True`` (default)
 
     :param file_output:
         Supply a filename to copy all log output to that file, or
-        set to False to disable (default)
+        set to ``False`` to disable (default)
 
     :param capture_warnings:
-        Capture warnings from Python's warnings module if True (default)
+        Capture warnings from Python's warnings module if ``True``
 
     :return:
         A :class:`logging.Logger` object for AMICI logging. Note that other
@@ -81,7 +81,12 @@ def _setup_logger(
 
     log.setLevel(level)
 
+    py_warn_logger = logging.getLogger("py.warnings")
+
     # Remove default logging handler
+    for handler in log.handlers:
+        if handler in py_warn_logger.handlers:
+            py_warn_logger.removeHandler(handler)
     log.handlers = []
 
     log_fmt = logging.Formatter(
@@ -105,7 +110,10 @@ def _setup_logger(
     log.debug("Python version: %s", platform.python_version())
     log.debug("Hostname: %s", socket.getfqdn())
 
-    logging.captureWarnings(capture_warnings)
+    if capture_warnings:
+        logging.captureWarnings(capture_warnings)
+        for handler in log.handlers:
+            py_warn_logger.addHandler(handler)
 
     return log
 

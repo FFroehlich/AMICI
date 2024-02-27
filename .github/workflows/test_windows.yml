@@ -7,6 +7,7 @@ on:
     - cron:  '48 4 * * *'
   pull_request:
     branches:
+      - develop
       - master
 
 jobs:
@@ -30,11 +31,11 @@ jobs:
 
     steps:
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - run: git fetch --prune --unshallow
 
     - shell: bash
@@ -60,7 +61,7 @@ jobs:
       shell: powershell
       run: scripts/installOpenBLAS
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: OpenBLAS
         path: C:\BLAS\OpenBLAS

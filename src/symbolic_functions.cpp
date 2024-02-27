@@ -12,7 +12,6 @@
 #include <cfloat>
 #include <cmath>
 #include <cstdarg>
-#include <cstdlib>
 #if _MSC_VER && !__INTEL_COMPILER
 #include <malloc.h>
 #define alloca _alloca

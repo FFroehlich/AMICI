@@ -1,3 +1,175 @@
+Jan 20, 2024: version 7.6.0
+
+    * CHOLMOD 5.2.0: bug fix (restore ABI compatibility with 5.0.x, i.e., 5.2.0
+        is ABI incompatible to 5.1.x)
+    * SuiteSparse_config 7.6.0, Mongoose 3.3.2, COLAMD 3.3.2, CCOLAMD 3.3.2:
+        port Makefile to Windows
+    * SPQR 4.3.2: remove unused parameters
+    * LAGraph 1.1.2, CSparse 4.3.1, ParU 0.1.2, GraphBLAS 9.0.1:
+        minor updates to build system
+    * Example 1.6.2, UMFPACK 6.3.2, KLU 2.3.2, SuiteSparse_Mongoose 3.3.2,
+        SPEX 2.3.2: revise version numbers of dependent packages
+    * AMD, BTF, CAMD, CXSparse, LDL, RBio: unchanged
+    * Package versions in this release:
+        SuiteSparse_config 7.6.0
+        AMD 3.3.1
+        BTF 2.3.1
+        CAMD 3.3.1
+        CCOLAMD 3.3.2
+        CHOLMOD 5.2.0
+        COLAMD 3.3.2
+        CSparse 4.3.1
+        CXSparse 4.3.1
+        Example 1.6.2
+        GraphBLAS 9.0.1
+        KLU 2.3.2
+        LDL 3.3.1
+        LAGraph 1.1.2
+        SuiteSparse_Mongoose 3.3.2
+        ParU 0.1.2
+        RBio 4.3.1
+        SPEX 2.3.2
+        SPQR 4.3.2
+        UMFPACK 6.3.2
+
+Jan 12, 2024: version 7.5.1
+
+    * SuiteSparse_config: bug fix to SUITESPARSE__VERCODE macro.
+    * Example 1.6.1: add tests for *__VERSION macros.
+
+    * Package versions in this release:
+        SuiteSparse_config 7.5.1
+        AMD 3.3.1
+        BTF 2.3.1
+        CAMD 3.3.1
+        CCOLAMD 3.3.1
+        CHOLMOD 5.1.1
+        COLAMD 3.3.1
+        CSparse 4.3.0
+        CXSparse 4.3.1
+        Example 1.6.1
+        GraphBLAS 9.0.0
+        KLU 2.3.1
+        LDL 3.3.1
+        LAGraph 1.1.1
+        SuiteSparse_Mongoose 3.3.1
+        ParU 0.1.1
+        RBio 4.3.1
+        SPEX 2.3.1
+        SPQR 4.3.1
+        UMFPACK 6.3.1
+
+Jan 10, 2024: version 7.5.0
+
+    * SuiteSparse_config: 7.5.0, to reflect the addition of GraphBLAS 9.0.0.
+        Minor updates to build system, including bug fixes when specifying a
+        specific BLAS/LAPACK library, and configuration of *.pc files.
+    * GraphBLAS 9.0.0: supporting the v2.1 C API;
+        see https://github.com/GraphBLAS/graphblas-api-c
+    * Example 1.6.0: using GraphBLAS 9.0.0 and SuiteSparse_config 7.5.0,
+        remove explicit dependencies on OpenMP, libm, GMP, and MPFR.
+        Add programs to test the *Config.cmake of each package.
+    * All other packages (except CSparse): minor updates to build system
+        and MATLAB interfaces
+
+    * Package versions in this release:
+        SuiteSparse_config 7.5.0
+        AMD 3.3.1
+        BTF 2.3.1
+        CAMD 3.3.1
+        CCOLAMD 3.3.1
+        CHOLMOD 5.1.1
+        COLAMD 3.3.1
+        CSparse 4.3.0 (unchanged from SuiteSparse 7.4.0)
+        CXSparse 4.3.1
+        Example 1.6.0
+        GraphBLAS 9.0.0
+        KLU 2.3.1
+        LDL 3.3.1
+        LAGraph 1.1.1
+        SuiteSparse_Mongoose 3.3.1
+        ParU 0.1.1
+        RBio 4.3.1
+        SPEX 2.3.1
+        SPQR 4.3.1
+        UMFPACK 6.3.1
+
+Dec 30, 2023: version 7.4.0
+
+    * major change to build system: by Markus Mützel.  Includes a
+        top-level CMakeLists.txt that builds all packages, and support for
+        pkg-config. Default location of files is now listed below, where
+        PACKAGE is one of the packages in SuiteSparse:
+        * CMAKE_INSTALL_PREFIX/include/suitesparse: include files
+        * CMAKE_INSTALL_PREFIX/lib: compiled libraries
+        * CMAKE_INSTALL_PREFIX/lib/cmake/SuiteSparse: helper *.cmake scripts
+            for all of SuiteSparse
+        * CMAKE_INSTALL_PREFIX/lib/cmake/PACKAGE: *Config.cmake scripts for a
+            specific package
+        * CMAKE_INSTALL_PREFIX/lib/pkgconfig/PACKAGE.pc: *.pc pkg-config
+            files with information for a specific package
+        Additional changes are listed below.
+    * LAGraph 1.1.0: new package: graph algorithms based on GraphBLAS
+    * ParU 0.1.0: new package: parallel unsymmetric multifrontal method,
+        with Mohsen Aznaveh.  This is a stable package but is tagged as 0.1.0
+        since the API is still subject to change.
+    * CHOLMOD 5.1.0: full support for sparse single precision matrices,
+        bug fixes in the GPU Module.
+    * AMD 3.3.0: minor change for CHOLMOD 5.1.0 tests
+    * CAMD 3.3.0: minor change for CHOLMOD 5.1.0 tests
+    * SuiteSparse_config 7.4.0: added wrappers for single-precision BLAS/LAPACK,
+        added SUITESPARSE_TIME macro.
+    * *_version: added methods to all package that didn't have them:
+        AMD, CAMD, COLAMD, CCOLAMD, BTF, CSparse, CXSparse, KLU, BTF, RBio,
+        SPEX, SPQR, and UMFPACK.
+
+Oct 31, 2023: version 7.3.1
+
+    * CHOLMOD 5.0.1: remove "I" from cholmod.h.
+
+Oct 23, 2023: version 7.3.0
+
+    * CHOLMOD 5.0.0: initial support for sparse single precision matries.
+        CHOLMOD:Core replaced with CHOLMOD:Utility
+    * updated to require CHOLMOD 5.0.0:
+        Example 1.4.3, GPUQREngine 3.3.3, KLU 2.2.2, SPQR 4.2.2, UMFPACK 6.2.2
+    * SuiteSparseLAPACK.cmake: allow the use of BLIS/FLAME for LAPACK;
+        update from Theirry Thomas.
+    * build system: further updates to cmake, by Markus Muetzel.
+
+Oct 18, 2023: version 7.2.2
+
+    * CHOLMOD 4.2.2: bug fix to CHOLMOD/Supernodal (heuristic to determine
+        # threads to use for last supernode was incorrect)
+
+Oct 7, 2023: version 7.2.1
+
+    * GraphBLAS 8.2.1: bug fix to GrB_mxm; incorrect handling of typecasting
+    * cross-compiler support: replace check_c_source_runs with _compiles,
+        for GraphBLAS and SuiteSparse_config, and remove check for
+        getenv("HOME").
+    * cmake update: add "None" build type, from Antonio Rojas, for Arch Linux,
+        to all *Config.cmake files for all packages except CSparse (CXSparse
+        is built instead, and CSparse does not have CSparseConfig.cmake file)
+    * UMFPACK v6.2.1 and GPUQREngine v3.2.1: copies internal include files
+        from other SuiteSparse packages (AMD and SuiteSparse_GPURuntime),
+        so these two packages can be built independently.
+
+Sept 8, 2023: version 7.2.0
+
+    * build system: modern cmake structure, by Markus Muetzel.
+        Most packages updated to vX.2.0 where X is unchanged (except SPQR
+        and Example package).
+    * SPQR v4.2.0: Major SO update.  Support for int32 indices by Raye Kimmerer
+
+June 29, 2023: version 7.1.0
+
+    * GraphBLAS v8.0.2: major update with a new JIT feature.
+    * build system: many changes to build systems of all packages, contributed
+        by Markus Muetzel.
+    * RBio 4.0.0: revised API: declaring many input parameters as const
+    * CXSparse 4.0.4: changed complex types for C++ callers
+
 Jan 20, 2023: version 7.0.1
 
     * GraphBLAS v7.4.3: debug was left on in GrB_Matrix_removeElement
@@ -128,7 +300,7 @@ Mar 14, 2022, SuiteSparse 5.11.0
             v1.9.3, Copyright (c) 2011-2016, Yann Collet, All Rights Reserved.
         * iso-valued matrices and vectors: to exploit the common case of
             an unweighted graph
-        * bug fixes: 4 bugs fixed since SuiteSparse 5.10.1 with 
+        * bug fixes: 4 bugs fixed since SuiteSparse 5.10.1 with
             GraphBLAS v5.0.5.  12 other bugs appeared in the interim but
             appeared in versions after v5.0.5 but fixed before ever
             affecting SuiteSparse itself.
@@ -496,7 +668,7 @@ June 20, 2012: SuiteSparse version 4.0.1
     * UMFPACK 5.6.1:
         minor fix to MATLAB install; no change to C except version nubmer
     * MATLAB_Tools:
-        update to UFcollection (filesep) 
+        update to UFcollection (filesep)
 
 
 June 1, 2012: SuiteSparse version 4.0.0

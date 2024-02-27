@@ -72,7 +72,7 @@ class AbstractSpline {
      * @param t point at which the spline is to be evaluated
      * @return value of the spline at `t`
      */
-    realtype get_value(const realtype t) const;
+    realtype get_value(realtype const t) const;
 
     /**
      * @brief Get the value of this spline at a given point
@@ -80,7 +80,7 @@ class AbstractSpline {
      * @param t point at which the spline is to be evaluated
      * @return scaled value of the spline at `t`
      */
-    virtual realtype get_value_scaled(const realtype t) const = 0;
+    virtual realtype get_value_scaled(realtype const t) const = 0;
 
     /**
      * @brief Get the value of this spline at a given node
@@ -105,7 +105,7 @@ class AbstractSpline {
      * @return sensitivity of the spline with respect to the `ip`th parameter
      * at `t`
      */
-    realtype get_sensitivity(const realtype t, int const ip) const;
+    realtype get_sensitivity(realtype const t, int const ip) const;
 
     /**
      * @brief Get the derivative of this spline with respect to a given
@@ -119,7 +119,7 @@ class AbstractSpline {
      * at `t`
      */
     realtype
-    get_sensitivity(const realtype t, int const ip, const realtype value) const;
+    get_sensitivity(realtype const t, int const ip, realtype const value) const;
 
     /**
      * @brief Get the derivative of this spline with respect to a given
@@ -131,7 +131,7 @@ class AbstractSpline {
      * parameter at `t`
      */
     virtual realtype
-    get_sensitivity_scaled(const realtype t, int const ip) const
+    get_sensitivity_scaled(realtype const t, int const ip) const
         = 0;
 
     /**
@@ -329,7 +329,7 @@ class HermiteSpline : public AbstractSpline {
         gsl::span<realtype> dspline_slopesdp
     ) override;
 
-    realtype get_value_scaled(const realtype t) const override;
+    realtype get_value_scaled(realtype const t) const override;
 
     /**
      * @brief Get the derivative of the spline at a given node
@@ -347,7 +347,7 @@ class HermiteSpline : public AbstractSpline {
     realtype get_node_derivative_scaled(int const i) const;
 
     realtype
-    get_sensitivity_scaled(const realtype t, int const ip) const override;
+    get_sensitivity_scaled(realtype const t, int const ip) const override;
 
     /**
      * @brief Whether derivatives of this spline are computed

@@ -37,18 +37,18 @@ default: library
 
 # default is to install only in /usr/local
 library:
-	( cd build && cmake $(CMAKE_OPTIONS) .. && cmake --build . -j${JOBS} )
+	( cd build && cmake $(CMAKE_OPTIONS) .. && cmake --build . --config Release -j${JOBS} )
 
 # install only in SuiteSparse/lib and SuiteSparse/include
 local:
-	( cd build && cmake $(CMAKE_OPTIONS) -DLOCAL_INSTALL=1 .. && cmake --build . -j${JOBS} )
+	( cd build && cmake $(CMAKE_OPTIONS) -USUITESPARSE_PKGFILEDIR -DSUITESPARSE_LOCAL_INSTALL=1 .. && cmake --build . --config Release -j${JOBS} )
 
 # install only in /usr/local (default)
 global:
-	( cd build && cmake $(CMAKE_OPTIONS) -DLOCAL_INSTALL=0 .. && cmake --build . -j${JOBS} )
+	( cd build && cmake $(CMAKE_OPTIONS) -USUITESPARSE_PKGFILEDIR -DSUITESPARSE_LOCAL_INSTALL=0 .. && cmake --build . --config Release -j${JOBS} )
 
 debug:
-	( cd build ; cmake $(CMAKE_OPTIONS) -DCMAKE_BUILD_TYPE=Debug .. ; cmake --build . )
+	( cd build && cmake $(CMAKE_OPTIONS) -DCMAKE_BUILD_TYPE=Debug .. ; cmake --build . --config Debug )
 
 all: library
 
@@ -56,14 +56,14 @@ demos: library
 
 # just compile after running cmake; do not run cmake again
 remake:
-	( cd build ; cmake --build . )
+	( cd build && cmake --build . )
 
 # just run cmake to set things up
 setup:
-	( cd build ; cmake $(CMAKE_OPTIONS) .. )
+	( cd build && cmake $(CMAKE_OPTIONS) .. )
 
 install:
-	( cd build ; cmake --install . )
+	( cd build && cmake --install . )
 
 # remove any installed libraries and #include files
 uninstall:

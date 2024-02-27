@@ -1,7 +1,7 @@
 %define DOCSTRING
 """
 Core C++ bindings
------------------
+
 This module encompasses the complete public C++ API of AMICI, which was
 exposed via swig. All functions listed here are directly accessible in the
 main amici package, i.e., :py:class:`amici.amici.ExpData` is available as
@@ -16,6 +16,7 @@ nonstandard type conversions.
 
 // typemaps for docstrings
 %typemap(doctype) std::unique_ptr< amici::ExpData >::pointer "ExpData";
+%typemap(doctype) std::unique_ptr< amici::Model > "ModelPtr";
 %typemap(doctype) std::unique_ptr< amici::Solver > "SolverPtr";
 %typemap(doctype) std::vector< amici::realtype,std::allocator< amici::realtype > > "DoubleVector";
 %typemap(doctype) std::vector< double,std::allocator< double > > "DoubleVector";
@@ -43,8 +44,8 @@ nonstandard type conversions.
 %typemap(doctype) amici::SteadyStateSensitivityMode "SteadyStateSensitivityMode";
 %typemap(doctype) amici::realtype "float";
 %typemap(doctype) DoubleVector "numpy.ndarray";
-%typemap(doctype) IntVector "List[int]";
-%typemap(doctype) std::pair< size_t,size_t > "Tuple[int, int]";
+%typemap(doctype) IntVector "list[int]";
+%typemap(doctype) std::pair< size_t,size_t > "tuple[int, int]";
 %typemap(doctype) std::string "str";
 %typemap(doctype) std::string const & "str";
 %typemap(doctype) std::unique_ptr< amici::ExpData >   "ExpData";
@@ -343,8 +344,19 @@ if sys.platform == 'win32' and (dll_dirs := os.environ.get('AMICI_DLL_DIRS')):
 // import additional types for typehints
 // also import np for use in __repr__ functions
 %pythonbegin %{
-from typing import TYPE_CHECKING, Iterable, List, Tuple, Sequence
+from typing import TYPE_CHECKING, Iterable, Sequence
 import numpy as np
 if TYPE_CHECKING:
     import numpy
+%}
+
+%pythoncode %{
+
+
+__all__ = [
+    x
+    for x in dir(sys.modules[__name__])
+    if not x.startswith('_')
+    and x not in {"np", "sys", "os", "numpy", "IntEnum", "enum", "pi", "TYPE_CHECKING", "Iterable", "Sequence"}
+]
 %}

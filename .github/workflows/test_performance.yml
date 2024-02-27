@@ -27,11 +27,11 @@ jobs:
 
     steps:
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 20
 
@@ -51,7 +51,7 @@ jobs:
 
     - name: Install AMICI sdist
       run: |
-        AMICI_PARALLEL_COMPILE=2 check_time.sh \
+        AMICI_PARALLEL_COMPILE="" check_time.sh \
             install_sdist pip3 install -v --user \
             $(ls -t python/sdist/dist/amici-*.tar.gz | head -1)
 
@@ -64,7 +64,7 @@ jobs:
         AMICI_IMPORT_NPROCS=2 check_time.sh petab_import python tests/performance/test.py import
 
     - name: "Upload artifact: CS_Signalling_ERBB_RAS_AKT_petab"
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: model_performance_test
         path: model_performance_test

@@ -1011,19 +1011,6 @@ Survival or apoptosis is a binary decision in individual cells. However, at the 
   url      = {https://doi.org/10.1093/bioinformatics/btac755},
 }
 
-@Article{RaimundezFed2022,
-  author       = {Raimundez, Elba and Fedders, Michael and Hasenauer, Jan},
-  journal      = {bioRxiv},
-  title        = {Posterior marginalization accelerates Bayesian inference for dynamical systems},
-  year         = {2022},
-  abstract     = {Bayesian inference is an important method in the life and natural sciences for learning from data. It provides information about parameter uncertainties, and thereby the reliability of models and their predictions. Yet, generating representative samples from the Bayesian posterior distribution is often computationally challenging. Here, we present an approach that lowers the computational complexity of sample generation for problems with scaling, offset and noise parameters. The proposed method is based on the marginalization of the posterior distribution, which reduces the dimensionality of the sampling problem. We provide analytical results for a broad class of problems and show that the method is suitable for a large number of applications. Subsequently, we demonstrate the benefit of the approach for various application examples from the field of systems biology. We report a substantial improvement up to 50 times in the effective sample size per unit of time, in particular when applied to multi-modal posterior problems. As the scheme is broadly applicable, it will facilitate Bayesian inference in different research fields.Competing Interest StatementThe authors have declared no competing interest.},
-  doi          = {10.1101/2022.12.02.518841},
-  elocation-id = {2022.12.02.518841},
-  eprint       = {https://www.biorxiv.org/content/early/2022/12/03/2022.12.02.518841.full.pdf},
-  publisher    = {Cold Spring Harbor Laboratory},
-  url          = {https://www.biorxiv.org/content/early/2022/12/03/2022.12.02.518841},
-}
-
 @Article{AlbadryHoe2022,
   author   = {Albadry, Mohamed and Höpfl, Sebastian and Ehteshamzad, Nadia and König, Matthias and Böttcher, Michael and Neumann, Jasna and Lupp, Amelie and Dirsch, Olaf and Radde, Nicole and Christ, Bruno and Christ, Madlen and Schwen, Lars Ole and Laue, Hendrik and Klopfleisch, Robert and Dahmen, Uta},
   journal  = {Scientific Reports},
@@ -1113,19 +1100,20 @@ Survival or apoptosis is a binary decision in individual cells. However, at the 
 }
 
 @Article{FroehlichSor2022,
-  author       = {Fröhlich, Fabian AND Sorger, Peter K.},
-  journal      = {PLOS Computational Biology},
-  title        = {Fides: Reliable trust-region optimization for parameter estimation of ordinary differential equation models},
-  year         = {2022},
-  month        = {07},
-  number       = {7},
-  pages        = {1-28},
-  volume       = {18},
-  abstract     = {Ordinary differential equation (ODE) models are widely used to study biochemical reactions in cellular networks since they effectively describe the temporal evolution of these networks using mass action kinetics. The parameters of these models are rarely known a priori and must instead be estimated by calibration using experimental data. Optimization-based calibration of ODE models on is often challenging, even for low-dimensional problems. Multiple hypotheses have been advanced to explain why biochemical model calibration is challenging, including non-identifiability of model parameters, but there are few comprehensive studies that test these hypotheses, likely because tools for performing such studies are also lacking. Nonetheless, reliable model calibration is essential for uncertainty analysis, model comparison, and biological interpretation. We implemented an established trust-region method as a modular Python framework (fides) to enable systematic comparison of different approaches to ODE model calibration involving a variety of Hessian approximation schemes. We evaluated fides on a recently developed corpus of biologically realistic benchmark problems for which real experimental data are available. Unexpectedly, we observed high variability in optimizer performance among different implementations of the same mathematical instructions (algorithms). Analysis of possible sources of poor optimizer performance identified limitations in the widely used Gauss-Newton, BFGS and SR1 Hessian approximation schemes. We addressed these drawbacks with a novel hybrid Hessian approximation scheme that enhances optimizer performance and outperforms existing hybrid approaches. When applied to the corpus of test models, we found that fides was on average more reliable and efficient than existing methods using a variety of criteria. We expect fides to be broadly useful for ODE constrained optimization problems in biochemical models and to be a foundation for future methods development.},
-  creationdate = {2023-04-15T08:12:41},
-  doi          = {10.1371/journal.pcbi.1010322},
-  publisher    = {Public Library of Science},
-  url          = {https://doi.org/10.1371/journal.pcbi.1010322},
+  author           = {Fröhlich, Fabian and Sorger, Peter K.},
+  journal          = {PLOS Computational Biology},
+  title            = {Fides: Reliable trust-region optimization for parameter estimation of ordinary differential equation models},
+  year             = {2022},
+  month            = {07},
+  number           = {7},
+  pages            = {1-28},
+  volume           = {18},
+  abstract         = {Ordinary differential equation (ODE) models are widely used to study biochemical reactions in cellular networks since they effectively describe the temporal evolution of these networks using mass action kinetics. The parameters of these models are rarely known a priori and must instead be estimated by calibration using experimental data. Optimization-based calibration of ODE models on is often challenging, even for low-dimensional problems. Multiple hypotheses have been advanced to explain why biochemical model calibration is challenging, including non-identifiability of model parameters, but there are few comprehensive studies that test these hypotheses, likely because tools for performing such studies are also lacking. Nonetheless, reliable model calibration is essential for uncertainty analysis, model comparison, and biological interpretation. We implemented an established trust-region method as a modular Python framework (fides) to enable systematic comparison of different approaches to ODE model calibration involving a variety of Hessian approximation schemes. We evaluated fides on a recently developed corpus of biologically realistic benchmark problems for which real experimental data are available. Unexpectedly, we observed high variability in optimizer performance among different implementations of the same mathematical instructions (algorithms). Analysis of possible sources of poor optimizer performance identified limitations in the widely used Gauss-Newton, BFGS and SR1 Hessian approximation schemes. We addressed these drawbacks with a novel hybrid Hessian approximation scheme that enhances optimizer performance and outperforms existing hybrid approaches. When applied to the corpus of test models, we found that fides was on average more reliable and efficient than existing methods using a variety of criteria. We expect fides to be broadly useful for ODE constrained optimization problems in biochemical models and to be a foundation for future methods development.},
+  creationdate     = {2023-04-15T08:12:41},
+  doi              = {10.1371/journal.pcbi.1010322},
+  modificationdate = {2024-02-23T18:10:55},
+  publisher        = {Public Library of Science},
+  url              = {https://doi.org/10.1371/journal.pcbi.1010322},
 }
 
 @Article{ErdemMut2022,
@@ -1176,15 +1164,6 @@ Survival or apoptosis is a binary decision in individual cells. However, at the 
   url              = {https://doi.org/10.1007/978-1-0716-3008-2_3},
 }
 
-@Misc{SluijsZho2023,
-  author           = {Bob van Sluijs and Tao Zhou and Britta Helwig and Mathieu Baltussen and Frank Nelissen and Hans Heus and Wilhelm Huck},
-  title            = {Inverse Design of Enzymatic Reaction Network States},
-  year             = {2023},
-  creationdate     = {2023-07-06T10:39:46},
-  doi              = {10.21203/rs.3.rs-2646906/v1},
-  modificationdate = {2023-07-06T10:40:37},
-}
-
 @Article{BuckBas2023,
   author           = {Michèle C. Buck and Lisa Bast and Judith S. Hecker and Jennifer Rivière and Maja Rothenberg-Thurley and Luisa Vogel and Dantong Wang and Immanuel Andrä and Fabian J. Theis and Florian Bassermann and Klaus H. Metzeler and Robert A.J. Oostendorp and Carsten Marr and Katharina S. Götze},
   journal          = {iScience},
@@ -1215,6 +1194,85 @@ Clonal hematopoiesis of indeterminate potential (CHIP) describes the age-related
   keywords         = {cardiovascular modelling, clinical data, computer modelling, diabetes, hemodynamic, hypertension, mathematical model},
   modificationdate = {2023-07-27T08:19:05},
   url              = {https://physoc.onlinelibrary.wiley.com/doi/abs/10.1113/JP284652},
+}
+
+@Unknown{HasenauerMer2023,
+  author           = {Hasenauer, Jan and Merkt, Simon and Ali, Solomon and Gudina, Esayas and Adissu, Wondimagegn and Münchhoff, Maximilian and Graf, Alexander and Krebs, Stefan and Elsbernd, Kira and Kisch, Rebecca and Sirgu, Sisay and Fantahun, Bereket and Bekele, Delayehu and Rubio-Acero, Raquel and Gashaw, Mulatu and Girma, Eyob and Yilma, Daniel and Zeynudin, Ahmed and Paunovic, Ivana and Wieser, Andreas},
+  creationdate     = {2023-09-19T09:21:01},
+  doi              = {10.21203/rs.3.rs-3307821/v1},
+  modificationdate = {2023-09-19T09:21:01},
+  month            = {09},
+  title            = {Long-term monitoring of SARS-CoV-2 seroprevalence and variants in Ethiopia provides prediction for immunity and cross-immunity},
+  year             = {2023},
+}
+
+@Article{RaimundezFed2023,
+  author           = {Elba Raim{\'{u}}ndez and Michael Fedders and Jan Hasenauer},
+  journal          = {{iScience}},
+  title            = {Posterior marginalization accelerates Bayesian inference for dynamical models of biological processes},
+  year             = {2023},
+  month            = {sep},
+  pages            = {108083},
+  creationdate     = {2023-10-04T14:12:00},
+  doi              = {10.1016/j.isci.2023.108083},
+  modificationdate = {2023-10-04T14:12:00},
+  publisher        = {Elsevier {BV}},
+}
+
+@Article{Mendes2023,
+  author           = {Mendes, Pedro},
+  journal          = {Frontiers in Cell and Developmental Biology},
+  title            = {Reproducibility and FAIR principles: the case of a segment polarity network model},
+  year             = {2023},
+  issn             = {2296-634X},
+  volume           = {11},
+  abstract         = {The issue of reproducibility of computational models and the related FAIR principles (findable, accessible, interoperable, and reusable) are examined in a specific test case. I analyze a computational model of the segment polarity network in Drosophila embryos published in 2000. Despite the high number of citations to this publication, 23 years later the model is barely accessible, and consequently not interoperable. Following the text of the original publication allowed successfully encoding the model for the open source software COPASI. Subsequently saving the model in the SBML format allowed it to be reused in other open source software packages. Submission of this SBML encoding of the model to the BioModels database enables its findability and accessibility. This demonstrates how the FAIR principles can be successfully enabled by using open source software, widely adopted standards, and public repositories, facilitating reproducibility and reuse of computational cell biology models that will outlive the specific software used.},
+  creationdate     = {2023-10-28T19:05:54},
+  doi              = {10.3389/fcell.2023.1201673},
+  modificationdate = {2023-10-28T19:05:54},
+  url              = {https://www.frontiersin.org/articles/10.3389/fcell.2023.1201673},
+}
+
+@Misc{HuckBal2023,
+  author           = {Wilhelm Huck and Mathieu Baltussen and Thijs de Jong and Quentin Duez and William Robinson},
+  title            = {Chemical reservoir computation in a self-organizing reaction network},
+  year             = {2023},
+  creationdate     = {2023-11-18T09:09:45},
+  doi              = {10.21203/rs.3.rs-3487081/v1},
+  modificationdate = {2023-11-18T09:10:08},
+  publisher        = {Research Square Platform LLC},
+}
+
+@Article{LangPen2024,
+  author           = {Lang, Paul F. and Penas, David R. and Banga, Julio R. and Weindl, Daniel and Novak, Bela},
+  journal          = {PLOS Computational Biology},
+  title            = {Reusable rule-based cell cycle model explains compartment-resolved dynamics of 16 observables in RPE-1 cells},
+  year             = {2024},
+  month            = {01},
+  number           = {1},
+  pages            = {1-24},
+  volume           = {20},
+  abstract         = {The mammalian cell cycle is regulated by a well-studied but complex biochemical reaction system. Computational models provide a particularly systematic and systemic description of the mechanisms governing mammalian cell cycle control. By combining both state-of-the-art multiplexed experimental methods and powerful computational tools, this work aims at improving on these models along four dimensions: model structure, validation data, validation methodology and model reusability. We developed a comprehensive model structure of the full cell cycle that qualitatively explains the behaviour of human retinal pigment epithelial-1 cells. To estimate the model parameters, time courses of eight cell cycle regulators in two compartments were reconstructed from single cell snapshot measurements. After optimisation with a parallel global optimisation metaheuristic we obtained excellent agreements between simulations and measurements. The PEtab specification of the optimisation problem facilitates reuse of model, data and/or optimisation results. Future perturbation experiments will improve parameter identifiability and allow for testing model predictive power. Such a predictive model may aid in drug discovery for cell cycle-related disorders.},
+  creationdate     = {2024-01-24T20:02:16},
+  doi              = {10.1371/journal.pcbi.1011151},
+  modificationdate = {2024-02-23T18:10:08},
+  publisher        = {Public Library of Science},
+  url              = {https://doi.org/10.1371/journal.pcbi.1011151},
+}
+
+@Article{SluijsZho2024,
+  author           = {van Sluijs, Bob and Zhou, Tao and Helwig, Britta and Baltussen, Mathieu G. and Nelissen, Frank H. T. and Heus, Hans A. and Huck, Wilhelm T. S.},
+  journal          = {Nature Communications},
+  title            = {Iterative design of training data to control intricate enzymatic reaction networks},
+  year             = {2024},
+  issn             = {2041-1723},
+  month            = feb,
+  number           = {1},
+  volume           = {15},
+  creationdate     = {2024-02-23T17:09:35},
+  doi              = {10.1038/s41467-024-45886-9},
+  modificationdate = {2024-02-23T17:09:35},
+  publisher        = {Springer Science and Business Media LLC},
 }
 
 @Comment{jabref-meta: databaseType:bibtex;}

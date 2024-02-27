@@ -1,14 +1,13 @@
 """Miscellaneous AMICI Python interface tests"""
 
 import sympy as sp
-from amici.cxxcodeprinter import AmiciCxxCodePrinter
+from amici.cxxcodeprinter import csc_matrix
 from amici.testing import skip_on_valgrind
 
 
 @skip_on_valgrind
 def test_csc_matrix():
     """Test sparse CSC matrix creation"""
-    printer = AmiciCxxCodePrinter()
     matrix = sp.Matrix([[1, 0], [2, 3]])
     (
         symbol_col_ptrs,
@@ -16,7 +15,7 @@ def test_csc_matrix():
         sparse_list,
         symbol_list,
         sparse_matrix,
-    ) = printer.csc_matrix(
+    ) = csc_matrix(
         matrix,
         rownames=[sp.Symbol("a1"), sp.Symbol("a2")],
         colnames=[sp.Symbol("b1"), sp.Symbol("b2")],
@@ -32,7 +31,6 @@ def test_csc_matrix():
 @skip_on_valgrind
 def test_csc_matrix_empty():
     """Test sparse CSC matrix creation for empty matrix"""
-    printer = AmiciCxxCodePrinter()
     matrix = sp.Matrix()
     (
         symbol_col_ptrs,
@@ -40,7 +38,7 @@ def test_csc_matrix_empty():
         sparse_list,
         symbol_list,
         sparse_matrix,
-    ) = printer.csc_matrix(matrix, rownames=[], colnames=[])
+    ) = csc_matrix(matrix, rownames=[], colnames=[])
 
     assert symbol_col_ptrs == []
     assert symbol_row_vals == []
@@ -52,7 +50,6 @@ def test_csc_matrix_empty():
 @skip_on_valgrind
 def test_csc_matrix_vector():
     """Test sparse CSC matrix creation from matrix slice"""
-    printer = AmiciCxxCodePrinter()
     matrix = sp.Matrix([[1, 0], [2, 3]])
     (
         symbol_col_ptrs,
@@ -60,7 +57,7 @@ def test_csc_matrix_vector():
         sparse_list,
         symbol_list,
         sparse_matrix,
-    ) = printer.csc_matrix(
+    ) = csc_matrix(
         matrix[:, 0],
         colnames=[sp.Symbol("b")],
         rownames=[sp.Symbol("a1"), sp.Symbol("a2")],
@@ -79,7 +76,7 @@ def test_csc_matrix_vector():
         sparse_list,
         symbol_list,
         sparse_matrix,
-    ) = printer.csc_matrix(
+    ) = csc_matrix(
         matrix[:, 1],
         colnames=[sp.Symbol("b")],
         rownames=[sp.Symbol("a1"), sp.Symbol("a2")],
@@ -93,6 +90,7 @@ def test_csc_matrix_vector():
     assert str(sparse_matrix) == "Matrix([[0], [da2_db_1]])"
 
 
+@skip_on_valgrind
 def test_match_deriv():
     from amici.de_export import DERIVATIVE_PATTERN as pat
 

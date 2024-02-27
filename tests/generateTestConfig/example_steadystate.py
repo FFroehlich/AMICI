@@ -2,7 +2,7 @@
 import sys
 
 import numpy as np
-from example import AmiciExample, dict2attrs
+from example import AmiciExample
 
 
 class ExampleSteadystate(AmiciExample):

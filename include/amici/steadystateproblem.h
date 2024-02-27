@@ -8,7 +8,6 @@
 
 #include <nvector/nvector_serial.h>
 
-#include <functional>
 #include <memory>
 
 namespace amici {

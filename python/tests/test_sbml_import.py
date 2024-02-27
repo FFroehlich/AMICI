@@ -3,7 +3,6 @@ import os
 import re
 from numbers import Number
 from pathlib import Path
-from urllib.request import urlopen
 
 import amici
 import libsbml
@@ -543,13 +542,13 @@ def test_sympy_exp_monkeypatch():
     monkeypatching sympy.Pow._eval_derivative in order to be able to compute
     non-nan sensitivities
     """
-    url = (
-        "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000529.2?"
-        "filename=BIOMD0000000529_url.xml"
+    import pooch
+
+    model_file = pooch.retrieve(
+        url="https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000529.2?filename=BIOMD0000000529_url.xml",
+        known_hash="md5:c6e0b298397485b93d7acfab80b21fd4",
     )
-    importer = amici.SbmlImporter(
-        urlopen(url, timeout=20).read().decode("utf-8"), from_file=False
-    )
+    importer = amici.SbmlImporter(model_file)
     module_name = "BIOMD0000000529"
 
     with TemporaryDirectory() as outdir:
@@ -654,6 +653,7 @@ def _test_set_parameters_by_dict(model_module):
     assert model.getParameters() == old_parameter_values
 
 
+@skip_on_valgrind
 @pytest.mark.parametrize("extract_cse", [True, False])
 def test_code_gen_uses_cse(extract_cse):
     """Check that code generation honors AMICI_EXTRACT_CSE"""
@@ -675,6 +675,7 @@ def test_code_gen_uses_cse(extract_cse):
         os.environ = old_environ
 
 
+@skip_on_valgrind
 def test_code_gen_uses_lhs_symbol_ids():
     """Check that code generation uses symbol IDs instead of plain array
     indices"""
@@ -691,6 +692,7 @@ def test_code_gen_uses_lhs_symbol_ids():
     assert "dobservable_x1_dx1 = " in dwdx
 
 
+@skip_on_valgrind
 def test_hardcode_parameters(simple_sbml_model):
     """Test model generation works for model without observables"""
     sbml_doc, sbml_model = simple_sbml_model

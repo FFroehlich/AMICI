@@ -10,7 +10,7 @@ on:
     paths:
       - .github/workflows/test_sbml_semantic_test_suite.yml
       - python/sdist/amici/de_export.py
-      - python/sdist/amici/de_model.py
+      - python/sdist/amici/de_model_components.py
       - python/sdist/amici/sbml_import.py
       - python/sdist/amici/import_utils.py
       - scripts/run-SBMLTestsuite.sh
@@ -34,32 +34,31 @@ jobs:
 
     steps:
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 1
 
     - name: Install apt dependencies
       uses: ./.github/actions/install-apt-dependencies
 
-    - run: AMICI_PARALLEL_COMPILE=2 ./scripts/installAmiciSource.sh
-
     - run: |
         source build/venv/bin/activate && pip install git+https://github.com/ICB-DCM/fiddy.git
-
-    - run: AMICI_PARALLEL_COMPILE=2 ./scripts/run-SBMLTestsuite.sh ${{ matrix.cases }}
+    - run: AMICI_PARALLEL_COMPILE="" ./scripts/installAmiciSource.sh
+    - run: AMICI_PARALLEL_COMPILE="" ./scripts/run-SBMLTestsuite.sh ${{ matrix.cases }}
 
     - name: "Upload artifact: SBML semantic test suite results"
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: amici-semantic-results
+        name: amici-semantic-results-${{ matrix.cases }}
         path: tests/amici-semantic-results
 
     - name: Codecov SBMLSuite
-      uses: codecov/codecov-action@v3.1.0
+      if: github.event_name == 'pull_request' || github.repository_owner == 'AMICI-dev'
+      uses: codecov/codecov-action@v4
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         file: coverage_SBMLSuite.xml

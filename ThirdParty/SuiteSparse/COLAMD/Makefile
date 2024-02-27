@@ -36,27 +36,27 @@ default: library
 
 # default is to install only in /usr/local
 library:
-	( cd build && cmake $(CMAKE_OPTIONS) .. && cmake --build . -j${JOBS} )
+	( cd build && cmake $(CMAKE_OPTIONS) .. && cmake --build . --config Release -j${JOBS} )
 
 # install only in SuiteSparse/lib and SuiteSparse/include
 local:
-	( cd build && cmake $(CMAKE_OPTIONS) -DLOCAL_INSTALL=1 .. && cmake --build . -j${JOBS} )
+	( cd build && cmake $(CMAKE_OPTIONS) -USUITESPARSE_PKGFILEDIR -DSUITESPARSE_LOCAL_INSTALL=1 .. && cmake --build . --config Release -j${JOBS} )
 
 # install only in /usr/local (default)
 global:
-	( cd build && cmake $(CMAKE_OPTIONS) -DLOCAL_INSTALL=0 .. && cmake --build . -j${JOBS} )
+	( cd build && cmake $(CMAKE_OPTIONS) -USUITESPARSE_PKGFILEDIR -DSUITESPARSE_LOCAL_INSTALL=0 .. && cmake --build . --config Release -j${JOBS} )
 
 debug:
-	( cd build && cmake $(CMAKE_OPTIONS) -DCMAKE_BUILD_TYPE=Debug .. && cmake --build . -j${JOBS} )
+	( cd build && cmake $(CMAKE_OPTIONS) -DCMAKE_BUILD_TYPE=Debug .. && cmake --build . --config Debug -j${JOBS} )
 
 all: library
 
 demos: library
-	( cd build && cmake $(CMAKE_OPTIONS) -DDEMO=1 .. && cmake --build . -j${JOBS} )
-	- ./build/colamd_example > ./build/colamd_example.out
-	- diff --strip-trailing-cr ./Demo/colamd_example.out ./build/colamd_example.out
-	- ./build/colamd_l_example > ./build/colamd_l_example.out
-	- diff --strip-trailing-cr ./Demo/colamd_l_example.out ./build/colamd_l_example.out
+	( cd build && cmake $(CMAKE_OPTIONS) -DSUITESPARSE_DEMOS=1 .. && cmake --build . --config Release -j${JOBS} )
+	- ./build/colamd_example > ./build/colamd_example.out && ( command -v d2u && d2u ./build/colamd_example.out || true )
+	- diff ./Demo/colamd_example.out ./build/colamd_example.out
+	- ./build/colamd_l_example > ./build/colamd_l_example.out && ( command -v d2u && d2u ./build/colamd_l_example.out || true )
+	- diff ./Demo/colamd_l_example.out ./build/colamd_l_example.out
 
 # just compile after running cmake; do not run cmake again
 remake:
@@ -64,7 +64,7 @@ remake:
 
 # just run cmake to set things up
 setup:
-	( cd build ; cmake $(CMAKE_OPTIONS) .. )
+	( cd build && cmake $(CMAKE_OPTIONS) .. )
 
 install:
 	( cd build && cmake --install . )

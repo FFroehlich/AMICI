@@ -12,7 +12,11 @@ import pytest
 from amici.antimony_import import antimony2amici
 from amici.gradient_check import check_derivatives
 from amici.testing import TemporaryDirectoryWinSafe, skip_on_valgrind
-from numpy.testing import assert_approx_equal, assert_array_almost_equal_nulp
+from numpy.testing import (
+    assert_approx_equal,
+    assert_array_almost_equal_nulp,
+    assert_allclose,
+)
 from scipy.special import loggamma
 
 
@@ -221,4 +225,52 @@ def test_rateof():
         assert_array_almost_equal_nulp(rdata.by_id("p3"), 0)
         assert_array_almost_equal_nulp(
             rdata.by_id("p2"), 1 + rdata.by_id("S1")
+        )
+
+
+@skip_on_valgrind
+def test_rateof_with_expression_dependent_rate():
+    """Test rateOf, where the rateOf argument depends on `w` and requires
+    toposorting."""
+    ant_model = """
+    model test_rateof_with_expression_dependent_rate
+        S1 = 0;
+        S2 = 0;
+        S1' = rate;
+        S2' = 2 * rateOf(S1);
+        # the id of the following expression must be alphabetically before
+        #  `rate`, so that toposort is required to evaluate the expressions
+        #  in the correct order
+        e1 := 2 * rateOf(S1);
+        rate := time
+    end
+    """
+    module_name = "test_rateof_with_expression_dependent_rate"
+    with TemporaryDirectoryWinSafe(prefix=module_name) as outdir:
+        antimony2amici(
+            ant_model,
+            model_name=module_name,
+            output_dir=outdir,
+        )
+        model_module = amici.import_model_module(
+            module_name=module_name, module_path=outdir
+        )
+        amici_model = model_module.getModel()
+        t = np.linspace(0, 10, 11)
+        amici_model.setTimepoints(t)
+        amici_solver = amici_model.getSolver()
+        rdata = amici.runAmiciSimulation(amici_model, amici_solver)
+
+        state_ids_solver = amici_model.getStateIdsSolver()
+
+        assert_array_almost_equal_nulp(rdata.by_id("e1"), 2 * t, 1)
+
+        i_S1 = state_ids_solver.index("S1")
+        i_S2 = state_ids_solver.index("S2")
+        assert_approx_equal(rdata["xdot"][i_S1], t[-1])
+        assert_approx_equal(rdata["xdot"][i_S2], 2 * t[-1])
+
+        assert_allclose(np.diff(rdata.by_id("S1")), t[:-1] + 0.5, atol=1e-9)
+        assert_array_almost_equal_nulp(
+            rdata.by_id("S2"), 2 * rdata.by_id("S1"), 10
         )

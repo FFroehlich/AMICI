@@ -31,6 +31,7 @@ struct ModelDimensions {
      * @param nz Number of event observables
      * @param nztrue Number of event observables of the non-augmented model
      * @param ne Number of events
+     * @param ne_solver Number of events that require root-finding
      * @param nspl Number of splines
      * @param nJ Number of objective functions
      * @param nw Number of repeating elements
@@ -58,11 +59,12 @@ struct ModelDimensions {
         int const nx_rdata, int const nxtrue_rdata, int const nx_solver,
         int const nxtrue_solver, int const nx_solver_reinit, int const np,
         int const nk, int const ny, int const nytrue, int const nz,
-        int const nztrue, int const ne, int const nspl, int const nJ,
-        int const nw, int const ndwdx, int const ndwdp, int const ndwdw,
-        int const ndxdotdw, std::vector<int> ndJydy, int const ndxrdatadxsolver,
-        int const ndxrdatadtcl, int const ndtotal_cldx_rdata, int const nnz,
-        int const ubw, int const lbw
+        int const nztrue, int const ne, int const ne_solver, int const nspl,
+        int const nJ, int const nw, int const ndwdx, int const ndwdp,
+        int const ndwdw, int const ndxdotdw, std::vector<int> ndJydy,
+        int const ndxrdatadxsolver, int const ndxrdatadtcl,
+        int const ndtotal_cldx_rdata, int const nnz, int const ubw,
+        int const lbw
     )
         : nx_rdata(nx_rdata)
         , nxtrue_rdata(nxtrue_rdata)
@@ -76,6 +78,7 @@ struct ModelDimensions {
         , nz(nz)
         , nztrue(nztrue)
         , ne(ne)
+        , ne_solver(ne_solver)
         , nspl(nspl)
         , nw(nw)
         , ndwdx(ndwdx)
@@ -104,6 +107,8 @@ struct ModelDimensions {
         Expects(nztrue >= 0);
         Expects(nztrue <= nz);
         Expects(ne >= 0);
+        Expects(ne_solver >= 0);
+        Expects(ne >= ne_solver);
         Expects(nspl >= 0);
         Expects(nw >= 0);
         Expects(ndwdx >= 0);
@@ -164,7 +169,10 @@ struct ModelDimensions {
     /** Number of events */
     int ne{0};
 
-    /** numer of spline functions in the model */
+    /** Number of events that require root-finding */
+    int ne_solver{0};
+
+    /** Number of spline functions in the model */
     int nspl{0};
 
     /** Number of common expressions */

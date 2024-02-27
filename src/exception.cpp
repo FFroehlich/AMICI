@@ -3,7 +3,6 @@
 
 #include <cstdarg>
 #include <cstdio>
-#include <cstring>
 
 namespace amici {
 
@@ -34,14 +33,20 @@ void AmiException::storeMessage(char const* fmt, va_list argptr) {
     vsnprintf(msg_.data(), msg_.size(), fmt, argptr);
 }
 
-CvodeException::CvodeException(int const error_code, char const* function)
+CvodeException::CvodeException(
+    int const error_code, char const* function, char const* extra
+)
     : AmiException(
-        "Cvode routine %s failed with error code %i", function, error_code
+        "CVODE routine %s failed with error code %i. %s", function, error_code,
+        extra ? extra : ""
     ) {}
 
-IDAException::IDAException(int const error_code, char const* function)
+IDAException::IDAException(
+    int const error_code, char const* function, char const* extra
+)
     : AmiException(
-        "IDA routine %s failed with error code %i", function, error_code
+        "IDA routine %s failed with error code %i. %s", function, error_code,
+        extra ? extra : ""
     ) {}
 
 IntegrationFailure::IntegrationFailure(int code, realtype t)

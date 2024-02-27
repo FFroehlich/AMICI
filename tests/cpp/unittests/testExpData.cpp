@@ -4,8 +4,6 @@
 #include <amici/model_ode.h>
 #include <amici/symbolic_functions.h>
 
-#include <cmath>
-#include <cstring>
 #include <exception>
 #include <vector>
 
@@ -49,6 +47,7 @@ class ExpDataTest : public ::testing::Test {
             nz,        // nz
             nz,        // nztrue
             nmaxevent, // ne
+            0,         // ne_solver
             0,         // nspl
             0,         // nJ
             0,         // nw

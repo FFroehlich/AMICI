@@ -8,7 +8,6 @@
 #include "amici/solver.h"
 
 #include <cmath>
-#include <cstring>
 #include <cvodes/cvodes.h>
 #include <memory>
 #include <sundials/sundials_dense.h>
@@ -602,8 +601,6 @@ void SteadystateProblem::applyNewtonsMethod(Model& model, bool newton_retry) {
     int& i_newtonstep = numsteps_.at(newton_retry ? 2 : 0);
     i_newtonstep = 0;
     gamma_ = 1.0;
-    bool update_direction = true;
-    bool step_successful = false;
 
     if (model.nx_solver == 0)
         return;
@@ -614,6 +611,8 @@ void SteadystateProblem::applyNewtonsMethod(Model& model, bool newton_retry) {
     bool converged = false;
     wrms_ = getWrms(model, SensitivityMethod::none);
     converged = newton_retry ? false : wrms_ < conv_thresh;
+    bool update_direction = true;
+
     while (!converged && i_newtonstep < max_steps_) {
 
         /* If Newton steps are necessary, compute the initial search
@@ -635,7 +634,7 @@ void SteadystateProblem::applyNewtonsMethod(Model& model, bool newton_retry) {
         /* Compute new xdot and residuals */
         realtype wrms_tmp = getWrms(model, SensitivityMethod::none);
 
-        step_successful = wrms_tmp < wrms_;
+        bool step_successful = wrms_tmp < wrms_;
         if (step_successful) {
             /* If new residuals are smaller than old ones, update state */
             wrms_ = wrms_tmp;

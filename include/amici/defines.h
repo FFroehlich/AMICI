@@ -6,7 +6,6 @@
 #endif
 
 #include <cmath>
-#include <functional>
 
 /* Math constants in case _USE_MATH_DEFINES is not supported */
 #if defined(_USE_MATH_DEFINES)

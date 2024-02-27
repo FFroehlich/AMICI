@@ -48,7 +48,8 @@ class Solver {
   public:
     /** Type of what is passed to Sundials solvers as user_data */
     using user_data_type = std::pair<Model*, Solver const*>;
-
+    /** Type of the function to free a raw sundials solver pointer */
+    using free_solver_ptr = std::function<void(void*)>;
     /**
      * @brief Default constructor
      */
@@ -133,7 +134,7 @@ class Solver {
      */
 
     void setupSteadystate(
-        const realtype t0, Model* model, AmiVector const& x0,
+        realtype const t0, Model* model, AmiVector const& x0,
         AmiVector const& dx0, AmiVector const& xB0, AmiVector const& dxB0,
         AmiVector const& xQ0
     ) const;
@@ -1608,10 +1609,10 @@ class Solver {
     void applySensitivityTolerances() const;
 
     /** pointer to solver memory block */
-    mutable std::unique_ptr<void, std::function<void(void*)>> solver_memory_;
+    mutable std::unique_ptr<void, free_solver_ptr> solver_memory_;
 
     /** pointer to solver memory block */
-    mutable std::vector<std::unique_ptr<void, std::function<void(void*)>>>
+    mutable std::vector<std::unique_ptr<void, free_solver_ptr>>
         solver_memory_B_;
 
     /** Sundials user_data */
@@ -1708,7 +1709,7 @@ class Solver {
      * @param preequilibration flag indicating preequilibration or simulation
      */
     void checkSensitivityMethod(
-        const SensitivityMethod sensi_meth, bool preequilibration
+        SensitivityMethod const sensi_meth, bool preequilibration
     ) const;
 
     /** state (dimension: nx_solver) */
@@ -1783,7 +1784,8 @@ class Solver {
 
     /** Damping factor state used int the Newton method */
     NewtonDampingFactorMode newton_damping_factor_mode_{
-        NewtonDampingFactorMode::on};
+        NewtonDampingFactorMode::on
+    };
 
     /** Lower bound of the damping factor. */
     realtype newton_damping_factor_lower_bound_{1e-8};

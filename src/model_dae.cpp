@@ -4,7 +4,7 @@
 namespace amici {
 
 void Model_DAE::fJ(
-    const realtype t, const realtype cj, AmiVector const& x,
+    realtype const t, realtype const cj, AmiVector const& x,
     AmiVector const& dx, AmiVector const& xdot, SUNMatrix J
 ) {
     fJ(t, cj, x.getNVector(), dx.getNVector(), xdot.getNVector(), J);
@@ -14,14 +14,14 @@ void Model_DAE::fJ(
     realtype t, realtype cj, const_N_Vector x, const_N_Vector dx,
     const_N_Vector /*xdot*/, SUNMatrix J
 ) {
-    fJSparse(t, cj, x, dx, derived_state_.J_.get());
+    fJSparse(t, cj, x, dx, derived_state_.J_);
     derived_state_.J_.refresh();
     auto JDense = SUNMatrixWrapper(J);
     derived_state_.J_.to_dense(JDense);
 }
 
 void Model_DAE::fJSparse(
-    const realtype t, const realtype cj, AmiVector const& x,
+    realtype const t, realtype const cj, AmiVector const& x,
     AmiVector const& dx, AmiVector const& /*xdot*/, SUNMatrix J
 ) {
     fJSparse(t, cj, x.getNVector(), dx.getNVector(), J);
@@ -31,7 +31,7 @@ void Model_DAE::fJSparse(
     realtype t, realtype cj, const_N_Vector x, const_N_Vector dx, SUNMatrix J
 ) {
     auto x_pos = computeX_pos(x);
-    fdwdx(t, N_VGetArrayPointerConst(x_pos));
+    fdwdx(t, N_VGetArrayPointerConst(x_pos), false);
     if (pythonGenerated) {
         auto JSparse = SUNMatrixWrapper(J);
         // python generated
@@ -75,9 +75,9 @@ void Model_DAE::fJSparse(
 }
 
 void Model_DAE::fJv(
-    const realtype t, AmiVector const& x, AmiVector const& dx,
+    realtype const t, AmiVector const& x, AmiVector const& dx,
     AmiVector const& /*xdot*/, AmiVector const& v, AmiVector& Jv,
-    const realtype cj
+    realtype const cj
 ) {
     fJv(t, x.getNVector(), dx.getNVector(), v.getNVector(), Jv.getNVector(),
         cj);
@@ -88,13 +88,13 @@ void Model_DAE::fJv(
     N_Vector Jv, realtype cj
 ) {
     N_VConst(0.0, Jv);
-    fJSparse(t, cj, x, dx, derived_state_.J_.get());
+    fJSparse(t, cj, x, dx, derived_state_.J_);
     derived_state_.J_.refresh();
     derived_state_.J_.multiply(Jv, v);
 }
 
 void Model_DAE::froot(
-    const realtype t, AmiVector const& x, AmiVector const& dx,
+    realtype const t, AmiVector const& x, AmiVector const& dx,
     gsl::span<realtype> root
 ) {
     froot(t, x.getNVector(), dx.getNVector(), root);
@@ -113,7 +113,7 @@ void Model_DAE::froot(
 }
 
 void Model_DAE::fxdot(
-    const realtype t, AmiVector const& x, AmiVector const& dx, AmiVector& xdot
+    realtype const t, AmiVector const& x, AmiVector const& dx, AmiVector& xdot
 ) {
     fxdot(t, x.getNVector(), dx.getNVector(), xdot.getNVector());
 }
@@ -122,7 +122,7 @@ void Model_DAE::fxdot(
     realtype t, const_N_Vector x, const_N_Vector dx, N_Vector xdot
 ) {
     auto x_pos = computeX_pos(x);
-    fw(t, N_VGetArrayPointerConst(x));
+    fw(t, N_VGetArrayPointerConst(x), false);
     N_VConst(0.0, xdot);
     fxdot(
         N_VGetArrayPointer(xdot), t, N_VGetArrayPointerConst(x_pos),
@@ -132,10 +132,10 @@ void Model_DAE::fxdot(
 }
 
 void Model_DAE::fJDiag(
-    const realtype t, AmiVector& JDiag, const realtype /*cj*/,
+    realtype const t, AmiVector& JDiag, realtype const /*cj*/,
     AmiVector const& x, AmiVector const& dx
 ) {
-    fJSparse(t, 0.0, x.getNVector(), dx.getNVector(), derived_state_.J_.get());
+    fJSparse(t, 0.0, x.getNVector(), dx.getNVector(), derived_state_.J_);
     derived_state_.J_.refresh();
     derived_state_.J_.to_diag(JDiag.getNVector());
     if (checkFinite(JDiag.getVector(), ModelQuantity::JDiag) != AMICI_SUCCESS)
@@ -143,7 +143,7 @@ void Model_DAE::fJDiag(
 }
 
 void Model_DAE::fdxdotdw(
-    const realtype t, const_N_Vector x, const const_N_Vector dx
+    realtype const t, const_N_Vector x, const_N_Vector const dx
 ) {
     derived_state_.dxdotdw_.zero();
     if (nw > 0 && derived_state_.dxdotdw_.capacity()) {
@@ -161,7 +161,7 @@ void Model_DAE::fdxdotdw(
 }
 
 void Model_DAE::fdxdotdp(
-    const realtype t, const const_N_Vector x, const const_N_Vector dx
+    realtype const t, const_N_Vector const x, const_N_Vector const dx
 ) {
     auto x_pos = computeX_pos(x);
 
@@ -171,7 +171,7 @@ void Model_DAE::fdxdotdp(
         );
     } else {
         // matlab generated
-        fdwdp(t, N_VGetArrayPointerConst(x_pos));
+        fdwdp(t, N_VGetArrayPointerConst(x_pos), false);
 
         for (int ip = 0; ip < nplist(); ip++) {
             N_VConst(0.0, derived_state_.dxdotdp.getNVector(ip));
@@ -230,7 +230,7 @@ void Model_DAE::fJSparse(
 }
 
 void Model_DAE::froot(
-    realtype* /*root*/, const realtype /*t*/, realtype const* /*x*/,
+    realtype* /*root*/, realtype const /*t*/, realtype const* /*x*/,
     double const* /*p*/, double const* /*k*/, realtype const* /*h*/,
     realtype const* /*dx*/
 ) {
@@ -242,7 +242,7 @@ void Model_DAE::froot(
 }
 
 void Model_DAE::fdxdotdp(
-    realtype* /*dxdotdp*/, const realtype /*t*/, realtype const* /*x*/,
+    realtype* /*dxdotdp*/, realtype const /*t*/, realtype const* /*x*/,
     realtype const* /*p*/, realtype const* /*k*/, realtype const* /*h*/,
     int const /*ip*/, realtype const* /*dx*/, realtype const* /*w*/,
     realtype const* /*dwdp*/
@@ -255,7 +255,7 @@ void Model_DAE::fdxdotdp(
 }
 
 void Model_DAE::fdxdotdp_explicit(
-    realtype* /*dxdotdp_explicit*/, const realtype /*t*/, realtype const* /*x*/,
+    realtype* /*dxdotdp_explicit*/, realtype const /*t*/, realtype const* /*x*/,
     realtype const* /*p*/, realtype const* /*k*/, realtype const* /*h*/,
     realtype const* /*dx*/, realtype const* /*w*/
 ) {
@@ -283,7 +283,7 @@ void Model_DAE::fdxdotdp_explicit_rowvals(SUNMatrixWrapper& /*dxdotdp*/) {
 }
 
 void Model_DAE::fdxdotdx_explicit(
-    realtype* /*dxdotdx_explicit*/, const realtype /*t*/, realtype const* /*x*/,
+    realtype* /*dxdotdx_explicit*/, realtype const /*t*/, realtype const* /*x*/,
     realtype const* /*p*/, realtype const* /*k*/, realtype const* /*h*/,
     realtype const* /*dx*/, realtype const* /*w*/
 ) {
@@ -311,7 +311,7 @@ void Model_DAE::fdxdotdx_explicit_rowvals(SUNMatrixWrapper& /*dxdotdx*/) {
 }
 
 void Model_DAE::fdxdotdw(
-    realtype* /*dxdotdw*/, const realtype /*t*/, realtype const* /*x*/,
+    realtype* /*dxdotdw*/, realtype const /*t*/, realtype const* /*x*/,
     realtype const* /*p*/, realtype const* /*k*/, realtype const* /*h*/,
     realtype const* /*dx*/, realtype const* /*w*/
 ) {
@@ -339,11 +339,11 @@ void Model_DAE::fdxdotdw_rowvals(SUNMatrixWrapper& /*dxdotdw*/) {
 }
 
 void Model_DAE::
-    fM(realtype* /*M*/, const realtype /*t*/, realtype const* /*x*/,
+    fM(realtype* /*M*/, realtype const /*t*/, realtype const* /*x*/,
        realtype const* /*p*/, realtype const* /*k*/) {}
 
 void Model_DAE::fJB(
-    const realtype t, realtype cj, AmiVector const& x, AmiVector const& dx,
+    realtype const t, realtype cj, AmiVector const& x, AmiVector const& dx,
     AmiVector const& xB, AmiVector const& /*dxB*/, AmiVector const& /*xBdot*/,
     SUNMatrix JB
 ) {
@@ -355,14 +355,14 @@ void Model_DAE::fJB(
     realtype t, realtype cj, const_N_Vector x, const_N_Vector dx,
     const_N_Vector /*xB*/, const_N_Vector /*dxB*/, SUNMatrix JB
 ) {
-    fJSparse(t, cj, x, dx, derived_state_.J_.get());
+    fJSparse(t, cj, x, dx, derived_state_.J_);
     derived_state_.J_.refresh();
     auto JBDense = SUNMatrixWrapper(JB);
     derived_state_.J_.transpose(JBDense, -1.0, nxtrue_solver);
 }
 
 void Model_DAE::fJSparseB(
-    const realtype t, realtype cj, AmiVector const& x, AmiVector const& dx,
+    realtype const t, realtype cj, AmiVector const& x, AmiVector const& dx,
     AmiVector const& xB, AmiVector const& dxB, AmiVector const& /*xBdot*/,
     SUNMatrix JB
 ) {
@@ -376,7 +376,7 @@ void Model_DAE::fJSparseB(
     realtype t, realtype cj, const_N_Vector x, const_N_Vector dx,
     const_N_Vector /*xB*/, const_N_Vector /*dxB*/, SUNMatrix JB
 ) {
-    fJSparse(t, cj, x, dx, derived_state_.J_.get());
+    fJSparse(t, cj, x, dx, derived_state_.J_);
     derived_state_.J_.refresh();
     auto JSparseB = SUNMatrixWrapper(JB);
     derived_state_.J_.transpose(JSparseB, -1.0, nxtrue_solver);
@@ -387,7 +387,7 @@ void Model_DAE::fJvB(
     const_N_Vector dxB, const_N_Vector vB, N_Vector JvB, realtype cj
 ) {
     N_VConst(0.0, JvB);
-    fJSparseB(t, cj, x, dx, xB, dxB, derived_state_.JB_.get());
+    fJSparseB(t, cj, x, dx, xB, dxB, derived_state_.JB_);
     derived_state_.JB_.refresh();
     derived_state_.JB_.multiply(JvB, vB);
 }
@@ -397,7 +397,7 @@ void Model_DAE::fxBdot(
     const_N_Vector dxB, N_Vector xBdot
 ) {
     N_VConst(0.0, xBdot);
-    fJSparseB(t, 1.0, x, dx, xB, dxB, derived_state_.JB_.get());
+    fJSparseB(t, 1.0, x, dx, xB, dxB, derived_state_.JB_);
     derived_state_.JB_.refresh();
     fM(t, x);
     derived_state_.JB_.multiply(xBdot, xB);
@@ -427,7 +427,7 @@ void Model_DAE::fqBdot(
 }
 
 void Model_DAE::fxBdot_ss(
-    const realtype t, AmiVector const& xB, AmiVector const& dxB,
+    realtype const t, AmiVector const& xB, AmiVector const& dxB,
     AmiVector& xBdot
 ) {
     fxBdot_ss(t, xB.getNVector(), dxB.getNVector(), xBdot.getNVector());
@@ -454,18 +454,18 @@ void Model_DAE::fqBdot_ss(
 
 void Model_DAE::fJSparseB_ss(SUNMatrix JB) {
     /* Just pass the model Jacobian on to JB */
-    SUNMatCopy(derived_state_.JB_.get(), JB);
+    SUNMatCopy(derived_state_.JB_, JB);
     derived_state_.JB_.refresh();
 }
 
 void Model_DAE::writeSteadystateJB(
-    const realtype t, realtype cj, AmiVector const& x, AmiVector const& dx,
+    realtype const t, realtype cj, AmiVector const& x, AmiVector const& dx,
     AmiVector const& xB, AmiVector const& dxB, AmiVector const& /*xBdot*/
 ) {
     /* Get backward Jacobian */
     fJSparseB(
         t, cj, x.getNVector(), dx.getNVector(), xB.getNVector(),
-        dxB.getNVector(), derived_state_.JB_.get()
+        dxB.getNVector(), derived_state_.JB_
     );
     derived_state_.JB_.refresh();
     /* Switch sign, as we integrate forward in time, not backward */
@@ -473,7 +473,7 @@ void Model_DAE::writeSteadystateJB(
 }
 
 void Model_DAE::fsxdot(
-    const realtype t, AmiVector const& x, AmiVector const& dx, int const ip,
+    realtype const t, AmiVector const& x, AmiVector const& dx, int const ip,
     AmiVector const& sx, AmiVector const& sdx, AmiVector& sxdot
 ) {
     fsxdot(
@@ -491,7 +491,7 @@ void Model_DAE::fsxdot(
         // the same for all remaining
         fM(t, x);
         fdxdotdp(t, x, dx);
-        fJSparse(t, 0.0, x, dx, derived_state_.J_.get());
+        fJSparse(t, 0.0, x, dx, derived_state_.J_);
         derived_state_.J_.refresh();
     }
 

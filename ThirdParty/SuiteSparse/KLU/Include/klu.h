@@ -2,7 +2,7 @@
 // KLU/Source/klu.h: include file for KLU
 //------------------------------------------------------------------------------
 
-// KLU, Copyright (c) 2004-2022, University of Florida.  All Rights Reserved.
+// KLU, Copyright (c) 2004-2024, University of Florida.  All Rights Reserved.
 // Authors: Timothy A. Davis and Ekanathan Palamadai.
 // SPDX-License-Identifier: LGPL-2.1+
 
@@ -13,14 +13,14 @@
 #ifndef _KLU_H
 #define _KLU_H
 
+#include "amd.h"
+#include "colamd.h"
+#include "btf.h"
+
 /* make it easy for C++ programs to include KLU */
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "amd.h"
-#include "colamd.h"
-#include "btf.h"
 
 /* -------------------------------------------------------------------------- */
 /* Symbolic object - contains the pre-ordering computed by klu_analyze */
@@ -795,6 +795,15 @@ void *klu_l_free (void *, size_t, size_t, klu_l_common *) ;
 
 void *klu_l_realloc (size_t, size_t, size_t, void *, klu_l_common *) ;
 
+//------------------------------------------------------------------------------
+// klu_version: return KLU version
+//------------------------------------------------------------------------------
+
+void klu_version (int version [3]) ;
+
+#ifdef __cplusplus
+}
+#endif
 
 /* ========================================================================== */
 /* === KLU version ========================================================== */
@@ -814,15 +823,34 @@ void *klu_l_realloc (size_t, size_t, size_t, void *, klu_l_common *) ;
  *      #endif
  */
 
-#define KLU_DATE "Jan 17, 2023"
+#define KLU_DATE "Jan 20, 2024"
 #define KLU_MAIN_VERSION   2
-#define KLU_SUB_VERSION    0
-#define KLU_SUBSUB_VERSION 3
+#define KLU_SUB_VERSION    3
+#define KLU_SUBSUB_VERSION 2
 
-#define KLU_VERSION_CODE(main,sub) ((main) * 1000 + (sub))
-#define KLU_VERSION KLU_VERSION_CODE(KLU_MAIN_VERSION,KLU_SUB_VERSION)
+#define KLU_VERSION_CODE(main,sub) SUITESPARSE_VER_CODE(main,sub)
+#define KLU_VERSION KLU_VERSION_CODE(2,3)
 
-#ifdef __cplusplus
-}
+#define KLU__VERSION SUITESPARSE__VERCODE(2,3,2)
+#if !defined (SUITESPARSE__VERSION) || \
+    (SUITESPARSE__VERSION < SUITESPARSE__VERCODE(7,6,0))
+#error "KLU 2.3.2 requires SuiteSparse_config 7.6.0 or later"
 #endif
+
+#if !defined (AMD__VERSION) || \
+    (AMD__VERSION < SUITESPARSE__VERCODE(3,3,1))
+#error "KLU 2.3.2 requires AMD 3.3.1 or later"
 #endif
+
+#if !defined (COLAMD__VERSION) || \
+    (COLAMD__VERSION < SUITESPARSE__VERCODE(3,3,2))
+#error "KLU 2.3.2 requires COLAMD 3.3.2 or later"
+#endif
+
+#if !defined (BTF__VERSION) || \
+    (BTF__VERSION < SUITESPARSE__VERCODE(2,3,1))
+#error "KLU 2.3.2 requires BTF 2.3.1 or later"
+#endif
+
+#endif
+

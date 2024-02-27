@@ -1,4 +1,5 @@
 """PYSB model tests"""
+# flake8: noqa: F821
 
 import importlib
 import logging

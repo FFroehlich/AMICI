@@ -71,12 +71,12 @@ void amici_dgemm(
 ) {
     assert(layout == BLASLayout::colMajor);
 
-    const ptrdiff_t M_ = M;
-    const ptrdiff_t N_ = N;
-    const ptrdiff_t K_ = K;
-    const ptrdiff_t lda_ = lda;
-    const ptrdiff_t ldb_ = ldb;
-    const ptrdiff_t ldc_ = ldc;
+    ptrdiff_t const M_ = M;
+    ptrdiff_t const N_ = N;
+    ptrdiff_t const K_ = K;
+    ptrdiff_t const lda_ = lda;
+    ptrdiff_t const ldb_ = ldb;
+    ptrdiff_t const ldc_ = ldc;
     char const transA = amici_blasCBlasTransToBlasTrans(TransA);
     char const transB = amici_blasCBlasTransToBlasTrans(TransB);
 
@@ -92,11 +92,11 @@ void amici_dgemv(
 ) {
     assert(layout == BLASLayout::colMajor);
 
-    const ptrdiff_t M_ = M;
-    const ptrdiff_t N_ = N;
-    const ptrdiff_t lda_ = lda;
-    const ptrdiff_t incX_ = incX;
-    const ptrdiff_t incY_ = incY;
+    ptrdiff_t const M_ = M;
+    ptrdiff_t const N_ = N;
+    ptrdiff_t const lda_ = lda;
+    ptrdiff_t const incX_ = incX;
+    ptrdiff_t const incY_ = incY;
     char const transA = amici_blasCBlasTransToBlasTrans(TransA);
 
     FORTRAN_WRAPPER(dgemv)
@@ -107,9 +107,9 @@ void amici_daxpy(
     int n, double alpha, double const* x, int const incx, double* y, int incy
 ) {
 
-    const ptrdiff_t n_ = n;
-    const ptrdiff_t incx_ = incx;
-    const ptrdiff_t incy_ = incy;
+    ptrdiff_t const n_ = n;
+    ptrdiff_t const incx_ = incx;
+    ptrdiff_t const incy_ = incy;
 
     FORTRAN_WRAPPER(daxpy)(&n_, &alpha, x, &incx_, y, &incy_);
 }

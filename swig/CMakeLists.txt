@@ -112,10 +112,9 @@ if(${SWIG_VERSION} VERSION_LESS 4.1.0)
     PROPERTY SWIG_COMPILE_OPTIONS -py3)
 endif()
 
-# NOTE: No public definitions of any dependency are forwarded to swig,
-# they are only used for compiling the swig-generated source file.
-# Any definition that are relevant for swig-code generation, need to be
-# forwarded manually.
+# NOTE: No public definitions of any dependency are forwarded to swig, they are
+# only used for compiling the swig-generated source file. Any definition that
+# are relevant for swig-code generation, need to be forwarded manually.
 target_link_libraries(_amici amici Python3::Python)
 if(WIN32)
   add_custom_command(

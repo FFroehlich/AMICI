@@ -8,9 +8,6 @@
 #include "amici/solver.h"
 #include "amici/steadystateproblem.h"
 
-#include <cassert>
-#include <cstring>
-
 namespace amici {
 
 BackwardProblem::BackwardProblem(

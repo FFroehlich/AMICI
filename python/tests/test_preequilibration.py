@@ -5,7 +5,8 @@ import itertools
 import amici
 import numpy as np
 import pytest
-from numpy.testing import assert_allclose
+from amici.debugging import get_model_for_preeq
+from numpy.testing import assert_allclose, assert_equal
 from test_pysb import get_data
 
 
@@ -633,3 +634,31 @@ def test_simulation_errors(preeq_fixture):
         assert rdata._swigptr.messages[2].identifier == "OTHER"
         assert rdata._swigptr.messages[3].severity == amici.LogSeverity_debug
         assert rdata._swigptr.messages[3].identifier == "BACKTRACE"
+
+
+def test_get_model_for_preeq(preeq_fixture):
+    (
+        model,
+        solver,
+        edata,
+        edata_preeq,
+        edata_presim,
+        edata_sim,
+        pscales,
+        plists,
+    ) = preeq_fixture
+    model.setSteadyStateSensitivityMode(
+        amici.SteadyStateSensitivityMode.integrationOnly
+    )
+    model_preeq = get_model_for_preeq(model, edata)
+    # the exactly same settings are used, so results should match exactly
+    rdata1 = amici.runAmiciSimulation(model_preeq, solver)
+    rdata2 = amici.runAmiciSimulation(model, solver, edata_preeq)
+    assert_equal(
+        rdata1.x,
+        rdata2.x,
+    )
+    assert_equal(
+        rdata1.sx,
+        rdata2.sx,
+    )

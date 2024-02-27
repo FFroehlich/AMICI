@@ -32,7 +32,19 @@ class TemporaryDirectoryWinSafe(TemporaryDirectory):
     such failures.
     """
 
+    def __init__(self, *args, delete=True, **kwargs):
+        super().__init__(*args, **kwargs)
+        # TODO Python3.12 TemporaryDirectory already has a delete argument
+        #  remove this once we drop support for Python3.11
+        self.delete = delete
+
+        if not self.delete:
+            self._finalizer.detach()
+
     def cleanup(self):
+        if not self.delete:
+            return
+
         try:
             super().cleanup()
         except PermissionError as e:

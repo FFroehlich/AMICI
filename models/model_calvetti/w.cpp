@@ -10,7 +10,7 @@ namespace amici {
 
 namespace model_model_calvetti{
 
-void w_model_calvetti(realtype *w, const realtype t, const realtype *x, const realtype *p, const realtype *k, const realtype *h, const realtype *tcl, const realtype *spl) {
+void w_model_calvetti(realtype *w, const realtype t, const realtype *x, const realtype *p, const realtype *k, const realtype *h, const realtype *tcl, const realtype *spl, bool include_static) {
   w[0] = 1.0/k[0];
   w[1] = k[2]*k[2];
   w[2] = 1.0/(x[1]*x[1]);

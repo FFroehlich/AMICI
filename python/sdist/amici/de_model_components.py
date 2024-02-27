@@ -1,17 +1,19 @@
 """Objects for AMICI's internal differential equation model representation"""
 import abc
 import numbers
-from typing import Dict, Optional, Set, SupportsFloat, Union
+from typing import Optional, SupportsFloat, Union
 
 import sympy as sp
 
 from .import_utils import (
     RESERVED_SYMBOLS,
     ObservableTransformation,
+    amici_time_symbol,
     cast_to_sym,
     generate_measurement_symbol,
     generate_regularization_symbol,
 )
+from .constants import SymbolId
 
 __all__ = [
     "ConservationLaw",
@@ -137,7 +139,7 @@ class ConservationLaw(ModelQuantity):
         identifier: sp.Symbol,
         name: str,
         value: sp.Expr,
-        coefficients: Dict[sp.Symbol, sp.Expr],
+        coefficients: dict[sp.Symbol, sp.Expr],
         state_id: sp.Symbol,
     ):
         """
@@ -159,9 +161,9 @@ class ConservationLaw(ModelQuantity):
             identifier of the state that this conservation law replaces
         """
         self._state_expr: sp.Symbol = identifier - (value - state_id)
-        self._coefficients: Dict[sp.Symbol, sp.Expr] = coefficients
+        self._coefficients: dict[sp.Symbol, sp.Expr] = coefficients
         self._ncoeff: sp.Expr = coefficients[state_id]
-        super(ConservationLaw, self).__init__(identifier, name, value)
+        super().__init__(identifier, name, value)
 
     def get_ncoeff(self, state_id) -> Union[sp.Expr, int, float]:
         """
@@ -197,12 +199,10 @@ class AlgebraicEquation(ModelQuantity):
         Create a new AlgebraicEquation instance.
 
         :param value:
-            formula of the algebraic equation, solution is given by
+            Formula of the algebraic equation, the solution is given by
             ``formula == 0``
         """
-        super(AlgebraicEquation, self).__init__(
-            sp.Symbol(identifier), identifier, value
-        )
+        super().__init__(sp.Symbol(identifier), identifier, value)
 
     def get_free_symbols(self):
         return self._value.free_symbols
@@ -271,7 +271,7 @@ class AlgebraicState(State):
         :param init:
             initial value of the AlgebraicState
         """
-        super(AlgebraicState, self).__init__(identifier, name, init)
+        super().__init__(identifier, name, init)
 
     def has_conservation_law(self):
         """
@@ -321,7 +321,7 @@ class DifferentialState(State):
         :param dt:
             time derivative
         """
-        super(DifferentialState, self).__init__(identifier, name, init)
+        super().__init__(identifier, name, init)
         self._dt = cast_to_sym(dt, "dt")
         self._conservation_law: Union[ConservationLaw, None] = None
 
@@ -362,7 +362,7 @@ class DifferentialState(State):
         """
         return self._dt
 
-    def get_free_symbols(self) -> Set[sp.Basic]:
+    def get_free_symbols(self) -> set[sp.Basic]:
         """
         Gets the set of free symbols in time derivative and initial conditions
 
@@ -422,7 +422,7 @@ class Observable(ModelQuantity):
             observable transformation, only applies when evaluating objective
             function or residuals
         """
-        super(Observable, self).__init__(identifier, name, value)
+        super().__init__(identifier, name, value)
         self._measurement_symbol = measurement_symbol
         self._regularization_symbol = None
         self.trafo = transformation
@@ -480,7 +480,7 @@ class EventObservable(Observable):
         :param event:
             Symbolic identifier of the corresponding event.
         """
-        super(EventObservable, self).__init__(
+        super().__init__(
             identifier, name, value, measurement_symbol, transformation
         )
         self._event: sp.Symbol = event
@@ -519,7 +519,7 @@ class Sigma(ModelQuantity):
             raise RuntimeError(
                 "This class is meant to be sub-classed, not used directly."
             )
-        super(Sigma, self).__init__(identifier, name, value)
+        super().__init__(identifier, name, value)
 
 
 class SigmaY(Sigma):
@@ -555,7 +555,7 @@ class Expression(ModelQuantity):
         :param value:
             formula
         """
-        super(Expression, self).__init__(identifier, name, value)
+        super().__init__(identifier, name, value)
 
 
 class Parameter(ModelQuantity):
@@ -580,7 +580,7 @@ class Parameter(ModelQuantity):
         :param value:
             numeric value
         """
-        super(Parameter, self).__init__(identifier, name, value)
+        super().__init__(identifier, name, value)
 
 
 class Constant(ModelQuantity):
@@ -604,7 +604,7 @@ class Constant(ModelQuantity):
         :param value:
             numeric value
         """
-        super(Constant, self).__init__(identifier, name, value)
+        super().__init__(identifier, name, value)
 
 
 class LogLikelihood(ModelQuantity):
@@ -633,7 +633,7 @@ class LogLikelihood(ModelQuantity):
             raise RuntimeError(
                 "This class is meant to be sub-classed, not used directly."
             )
-        super(LogLikelihood, self).__init__(identifier, name, value)
+        super().__init__(identifier, name, value)
 
 
 class LogLikelihoodY(LogLikelihood):
@@ -691,10 +691,13 @@ class Event(ModelQuantity):
             initial boolean value of the trigger function at t0. If set to
             `False`, events may trigger at ``t==t0``, otherwise not.
         """
-        super(Event, self).__init__(identifier, name, value)
+        super().__init__(identifier, name, value)
         # add the Event specific components
         self._state_update = state_update
         self._initial_value = initial_value
+
+        # expression(s) for the timepoint(s) at which the event triggers
+        self._t_root = sp.solve(self.get_val(), amici_time_symbol)
 
     def get_initial_value(self) -> bool:
         """
@@ -713,3 +716,39 @@ class Event(ModelQuantity):
         return self.get_val() == other.get_val() and (
             self.get_initial_value() == other.get_initial_value()
         )
+
+    def triggers_at_fixed_timepoint(self) -> bool:
+        """Check whether the event triggers at a (single) fixed time-point."""
+        if len(self._t_root) != 1:
+            return False
+        return self._t_root[0].is_Number
+
+    def get_trigger_time(self) -> sp.Float:
+        """Get the time at which the event triggers.
+
+        Only for events that trigger at a single fixed time-point.
+        """
+        if not self.triggers_at_fixed_timepoint():
+            raise NotImplementedError(
+                "This event does not trigger at a fixed timepoint."
+            )
+        return self._t_root[0]
+
+
+# defines the type of some attributes in DEModel
+symbol_to_type = {
+    SymbolId.SPECIES: DifferentialState,
+    SymbolId.ALGEBRAIC_STATE: AlgebraicState,
+    SymbolId.ALGEBRAIC_EQUATION: AlgebraicEquation,
+    SymbolId.PARAMETER: Parameter,
+    SymbolId.FIXED_PARAMETER: Constant,
+    SymbolId.OBSERVABLE: Observable,
+    SymbolId.EVENT_OBSERVABLE: EventObservable,
+    SymbolId.SIGMAY: SigmaY,
+    SymbolId.SIGMAZ: SigmaZ,
+    SymbolId.LLHY: LogLikelihoodY,
+    SymbolId.LLHZ: LogLikelihoodZ,
+    SymbolId.LLHRZ: LogLikelihoodRZ,
+    SymbolId.EXPRESSION: Expression,
+    SymbolId.EVENT: Event,
+}

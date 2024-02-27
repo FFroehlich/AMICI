@@ -3,7 +3,8 @@ import logging
 import sys
 import warnings
 from contextlib import contextmanager, suppress
-from typing import Any, Dict, List, Optional, Sequence, Union
+from typing import Any, Optional, Union
+from collections.abc import Sequence
 
 import amici
 import amici.amici as amici_swig
@@ -54,7 +55,7 @@ def _capture_cstdout():
 
 
 def _get_ptr(
-    obj: Union[AmiciModel, AmiciExpData, AmiciSolver, AmiciReturnData]
+    obj: Union[AmiciModel, AmiciExpData, AmiciSolver, AmiciReturnData],
 ) -> Union[
     "amici_swig.Model",
     "amici_swig.ExpData",
@@ -135,17 +136,22 @@ def ExpData(*args) -> "amici_swig.ExpData":
 
     :returns: ExpData Instance
     """
+    if not args:
+        return amici_swig.ExpData()
+
     if isinstance(args[0], numpy.ReturnDataView):
         return amici_swig.ExpData(_get_ptr(args[0]["ptr"]), *args[1:])
-    elif isinstance(args[0], (amici_swig.ExpData, amici_swig.ExpDataPtr)):
+
+    if isinstance(args[0], (amici_swig.ExpData, amici_swig.ExpDataPtr)):
         # the *args[:1] should be empty, but by the time you read this,
         # the constructor signature may have changed, and you are glad this
         # wrapper did not break.
         return amici_swig.ExpData(_get_ptr(args[0]), *args[1:])
-    elif isinstance(args[0], (amici_swig.Model, amici_swig.ModelPtr)):
+
+    if isinstance(args[0], (amici_swig.Model, amici_swig.ModelPtr)):
         return amici_swig.ExpData(_get_ptr(args[0]))
-    else:
-        return amici_swig.ExpData(*args)
+
+    return amici_swig.ExpData(*args)
 
 
 def runAmiciSimulations(
@@ -154,7 +160,7 @@ def runAmiciSimulations(
     edata_list: AmiciExpDataVector,
     failfast: bool = True,
     num_threads: int = 1,
-) -> List["numpy.ReturnDataView"]:
+) -> list["numpy.ReturnDataView"]:
     """
     Convenience wrapper for loops of amici.runAmiciSimulation
 
@@ -254,7 +260,7 @@ model_instance_settings = [
 
 def get_model_settings(
     model: AmiciModel,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get model settings that are set independently of the compiled model.
 
     :param model: The AMICI model instance.
@@ -285,7 +291,7 @@ def get_model_settings(
 
 def set_model_settings(
     model: AmiciModel,
-    settings: Dict[str, Any],
+    settings: dict[str, Any],
 ) -> None:
     """Set model settings.
 

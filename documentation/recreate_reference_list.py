@@ -20,7 +20,7 @@ import biblib.messages
 def get_keys_by_year(bibfile):
     """Get bibtex entry keys as dict by year"""
 
-    with open(bibfile, "r") as f:
+    with open(bibfile) as f:
         db = biblib.bib.Parser().parse(f, log_fp=sys.stderr).get_entries()
         recoverer = biblib.messages.InputErrorRecoverer()
         by_year = {}

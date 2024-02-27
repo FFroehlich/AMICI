@@ -9,6 +9,7 @@ import importlib
 import logging
 import os
 import sys
+from pathlib import Path
 
 import amici
 import numpy as np
@@ -16,7 +17,7 @@ import pandas as pd
 import petab
 import yaml
 from amici.logging import get_logger
-from amici.petab_objective import (
+from amici.petab.simulations import (
     LLH,
     RDATAS,
     rdatas_to_measurement_df,
@@ -100,7 +101,7 @@ def parse_cli_args():
 
 def main():
     """Simulate the model specified on the command line"""
-
+    script_dir = Path(__file__).parent.absolute()
     args = parse_cli_args()
     loglevel = logging.DEBUG if args.verbose else logging.INFO
     logger.setLevel(loglevel)
@@ -168,10 +169,7 @@ def main():
 
     times["np"] = sum(problem.parameter_df[petab.ESTIMATE])
 
-    pd.Series(times).to_csv(
-        f"./tests/benchmark-models/{args.model_name}_benchmark.csv"
-    )
-
+    pd.Series(times).to_csv(script_dir / f"{args.model_name}_benchmark.csv")
     for rdata in rdatas:
         assert (
             rdata.status == amici.AMICI_SUCCESS
@@ -201,9 +199,7 @@ def main():
                 ax.get_figure().savefig(fig_path, dpi=150)
 
     if args.check:
-        references_yaml = os.path.join(
-            os.path.dirname(__file__), "benchmark_models.yaml"
-        )
+        references_yaml = script_dir / "benchmark_models.yaml"
         with open(references_yaml) as f:
             refs = yaml.full_load(f)
 

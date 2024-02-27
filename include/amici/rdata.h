@@ -576,7 +576,7 @@ class ReturnData : public ModelDimensions {
 
         if (!this->J.empty()) {
             SUNMatrixWrapper J(nx_solver, nx_solver);
-            model.fJ(t_, 0.0, x_solver_, dx_solver_, xdot, J.get());
+            model.fJ(t_, 0.0, x_solver_, dx_solver_, xdot, J);
             // CVODES uses colmajor, so we need to transform to rowmajor
             for (int ix = 0; ix < model.nx_solver; ix++)
                 for (int jx = 0; jx < model.nx_solver; jx++)
@@ -688,7 +688,7 @@ class ReturnData : public ModelDimensions {
      * @param edata ExpData instance carrying experimental data
      */
     void getEventOutput(
-        realtype t, const std::vector<int> rootidx, Model& model,
+        realtype t, std::vector<int> const rootidx, Model& model,
         ExpData const* edata
     );
 

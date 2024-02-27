@@ -7,7 +7,6 @@
 #include "amici/vector.h"
 #include <amici/amici.h>
 
-#include <memory>
 #include <sundials/sundials_direct.h>
 #include <vector>
 
@@ -197,7 +196,9 @@ class ForwardProblem {
     SimulationState const& getSimulationStateTimepoint(int it) const {
         if (model->getTimepoint(it) == initial_state_.t)
             return getInitialSimulationState();
-        return timepoint_states_.find(model->getTimepoint(it))->second;
+        auto map_iter = timepoint_states_.find(model->getTimepoint(it));
+        assert(map_iter != timepoint_states_.end());
+        return map_iter->second;
     };
 
     /**
@@ -251,6 +252,21 @@ class ForwardProblem {
     void handleEvent(realtype* tlastroot, bool seflag, bool initial_event);
 
     /**
+     * @brief Store pre-event model state
+     *
+     * @param seflag Secondary event flag
+     * @param initial_event initial event flag
+     */
+    void store_pre_event_state(bool seflag, bool initial_event);
+
+    /**
+     * @brief Check for, and if applicable, handle any secondary events
+     *
+     * @param tlastroot pointer to the timepoint of the last event
+     */
+    void handle_secondary_event(realtype* tlastroot);
+
+    /**
      * @brief Extract output information for events
      */
     void storeEvent();
@@ -258,9 +274,9 @@ class ForwardProblem {
     /**
      * @brief Execute everything necessary for the handling of data points
      *
-     * @param it index of data point
+     * @param t measurement timepoint
      */
-    void handleDataPoint(int it);
+    void handleDataPoint(realtype t);
 
     /**
      * @brief Applies the event bolus to the current state
@@ -353,7 +369,8 @@ class ForwardProblem {
      * @brief Array of flags indicating which root has been found.
      *
      * Array of length nr (ne) with the indices of the user functions gi found
-     * to have a root. For i = 0, . . . ,nr 1 if gi has a root, and = 0 if not.
+     * to have a root. For i = 0, . . . ,nr 1 or -1 if gi has a root, and = 0
+     * if not. See CVodeGetRootInfo for details.
      */
     std::vector<int> roots_found_;
 

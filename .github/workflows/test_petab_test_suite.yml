@@ -26,11 +26,11 @@ jobs:
 
     steps:
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 20
 
@@ -44,8 +44,7 @@ jobs:
             && sudo apt-get install -y python3-venv
 
       - name: Build BNGL
-        run: |
-          scripts/buildBNGL.sh
+        run: scripts/buildBNGL.sh
 
       - run: |
           echo "${HOME}/.local/bin/" >> $GITHUB_PATH
@@ -54,8 +53,7 @@ jobs:
 
       # install AMICI
       - name: Install python package
-        run: |
-          scripts/installAmiciSource.sh
+        run: scripts/installAmiciSource.sh
 
       - name: Install petab
         run: |
@@ -74,20 +72,21 @@ jobs:
         run: |
           source ./build/venv/bin/activate \
             && pytest --cov-report=xml:coverage.xml \
-              --cov=./ python/tests/test_*petab*.py
+              --cov=./ python/tests/test_*petab*.py python/tests/petab/
 
       # run test models
       - name: Run PEtab test suite
         run: |
           source ./build/venv/bin/activate \
-          && AMICI_PARALLEL_COMPILE=2 pytest -v \
+          && AMICI_PARALLEL_COMPILE="" pytest -v \
             --cov-report=xml:coverage.xml \
             --cov-append \
             --cov=amici \
             tests/petab_test_suite/
 
       - name: Codecov
-        uses: codecov/codecov-action@v3.1.0
+        if: github.event_name == 'pull_request' || github.repository_owner == 'AMICI-dev'
+        uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: coverage.xml

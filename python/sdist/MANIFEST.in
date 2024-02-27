@@ -10,7 +10,7 @@ include version.txt
 include LICENSE.md
 exclude amici/*.so
 exclude amici/*.dll
-prune **/build/
+prune **/build
 prune amici/share
 prune amici/lib
 prune amici/ThirdParty/SuiteSparse/lib

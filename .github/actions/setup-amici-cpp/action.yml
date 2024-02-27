@@ -1,0 +1,47 @@
+name: Set up AMICI C++
+description: |
+  Build the AMICI C++ interface and set things for for coverage analysis.
+  (Currently ubuntu-only).
+
+runs:
+  using: "composite"
+  steps:
+    # BioNetGen Path
+    - run: echo "BNGPATH=${GITHUB_WORKSPACE}/ThirdParty/BioNetGen-2.7.0" >> $GITHUB_ENV
+      shell: bash
+
+    # use all available cores
+    - run: echo "AMICI_PARALLEL_COMPILE=" >> $GITHUB_ENV
+      shell: bash
+
+    # enable coverage
+    - run: echo "ENABLE_GCOV_COVERAGE=TRUE" >> $GITHUB_ENV
+      shell: bash
+
+    - run: echo "PYTHONFAULTHANDLER=1" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Set up Sonar tools
+      uses: ./.github/actions/setup-sonar-tools
+
+    - name: Install apt dependencies
+      uses: ./.github/actions/install-apt-dependencies
+
+    - name: Install additional apt dependencies
+      run: |
+        sudo apt-get update \
+          && sudo apt-get install -y \
+            cmake \
+            python3-venv \
+            lcov
+      shell: bash
+
+    - name: Build AMICI dependencies
+      run: scripts/buildDependencies.sh
+      shell: bash
+
+    - name: Build AMICI
+      run: scripts/buildAmici.sh
+      shell: bash
+      env:
+        CI_SONARCLOUD: "TRUE"

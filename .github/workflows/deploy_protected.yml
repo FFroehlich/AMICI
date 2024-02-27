@@ -13,10 +13,25 @@ on:
   workflow_dispatch:
 
 jobs:
-  dockerhub:
-    # https://github.com/marketplace/actions/publish-docker
-    name: Deploy Dockerhub
+  check-secret:
+    runs-on: ubuntu-latest
+    outputs:
+      secrets-defined: ${{ steps.secret-check.outputs.defined }}
+    steps:
+      - name: Check for Secret availability
+        id: secret-check
+        shell: bash
+        run: |
+          if [ "${{ secrets.DOCKER_USERNAME }}" != '' ]; then
+            echo "defined=true" >> $GITHUB_OUTPUT;
+          else
+            echo "defined=false" >> $GITHUB_OUTPUT;
+          fi
 
+  dockerhub:
+    name: Deploy Dockerhub
+    needs: [check-secret]
+    if: needs.check-secret.outputs.secrets-defined == 'true'
     runs-on: ubuntu-22.04
 
     strategy:
@@ -25,15 +40,15 @@ jobs:
 
     steps:
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - run: git archive -o container/amici.tar.gz --format=tar.gz HEAD
     - name: Set up QEMU
-      uses: docker/setup-qemu-action@v2
+      uses: docker/setup-qemu-action@v3
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      uses: docker/setup-buildx-action@v3
     - name: Publish to Registry
       uses: elgohr/Publish-Docker-Github-Action@v4
       with:

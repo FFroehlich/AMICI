@@ -25,19 +25,19 @@ set ( SuiteSparse_BLAS_integer "int64_t" )
 
 # If the suffix does not contain "_", use (Sun Perf., for example):
 
-#      cd build ; cmake -DBLAS64_SUFFIX="64" ..
+#      cd build && cmake -DBLAS64_SUFFIX="64" ..
 
 # If the suffix contains "_" (OpenBLAS in spack for example), use the
 # following:
 
-#      cd build ; cmake -DBLAS64_SUFFIX="_64" ..
+#      cd build && cmake -DBLAS64_SUFFIX="_64" ..
 
 # This setting could be used by the spack packaging of SuiteSparse when linked
 # with the spack-installed OpenBLAS with 64-bit integers.  See
 # https://github.com/spack/spack/blob/develop/var/spack/repos/builtin/packages/suite-sparse/package.py
 
 if ( DEFINED BLAS64_SUFFIX )
-    # append BLAS64_SUFFIX to each BLAS and LAPACK name
+    # append BLAS64_SUFFIX to each BLAS and LAPACK function name
     string ( FIND ${BLAS64_SUFFIX} "_" HAS_UNDERSCORE )
     message ( STATUS "BLAS64_suffix: ${BLAS64_SUFFIX}" )
     if ( HAS_UNDERSCORE EQUAL -1 )

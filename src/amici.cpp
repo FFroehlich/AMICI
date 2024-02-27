@@ -13,11 +13,6 @@
 #include <cvodes/cvodes.h>           //return codes
 #include <sundials/sundials_types.h> //realtype
 
-#include <cassert>
-#include <cstdarg>
-#include <cstdlib>
-#include <cstring>
-#include <iostream>
 #include <map>
 #include <memory>
 #include <type_traits>

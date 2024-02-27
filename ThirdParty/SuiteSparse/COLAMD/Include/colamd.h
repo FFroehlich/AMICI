@@ -1,8 +1,8 @@
 //------------------------------------------------------------------------------
-// COLAMD/Source/colamd.h: include file for COLAMD
+// COLAMD/Include/colamd.h: include file for COLAMD
 //------------------------------------------------------------------------------
 
-// COLAMD, Copyright (c) 1998-2022, Timothy A. Davis and Stefan Larimore,
+// COLAMD, Copyright (c) 1998-2024, Timothy A. Davis and Stefan Larimore,
 // All Rights Reserved.
 // SPDX-License-Identifier: BSD-3-clause
 
@@ -37,11 +37,6 @@
 #ifndef COLAMD_H
 #define COLAMD_H
 
-/* make it easy for C++ programs to include COLAMD */
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /* ========================================================================== */
 /* === Include files ======================================================== */
 /* ========================================================================== */
@@ -70,14 +65,19 @@ extern "C" {
  * Versions 2.3 and earlier of COLAMD do not include a #define'd version number.
  */
 
-#define COLAMD_DATE "Jan 17, 2023"
+#define COLAMD_DATE "Jan 20, 2024"
 #define COLAMD_MAIN_VERSION   3
-#define COLAMD_SUB_VERSION    0
-#define COLAMD_SUBSUB_VERSION 3
+#define COLAMD_SUB_VERSION    3
+#define COLAMD_SUBSUB_VERSION 2
 
-#define COLAMD_VERSION_CODE(main,sub) ((main) * 1000 + (sub))
-#define COLAMD_VERSION \
-        COLAMD_VERSION_CODE(COLAMD_MAIN_VERSION,COLAMD_SUB_VERSION)
+#define COLAMD_VERSION_CODE(main,sub) SUITESPARSE_VER_CODE(main,sub)
+#define COLAMD_VERSION COLAMD_VERSION_CODE(3,3)
+
+#define COLAMD__VERSION SUITESPARSE__VERCODE(3,3,2)
+#if !defined (SUITESPARSE__VERSION) || \
+    (SUITESPARSE__VERSION < SUITESPARSE__VERCODE(7,6,0))
+#error "COLAMD 3.3.2 requires SuiteSparse_config 7.6.0 or later"
+#endif
 
 /* ========================================================================== */
 /* === Knob and statistics definitions ====================================== */
@@ -128,6 +128,11 @@ extern "C" {
 /* ========================================================================== */
 /* === Prototypes of user-callable routines ================================= */
 /* ========================================================================== */
+
+/* make it easy for C++ programs to include COLAMD */
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 size_t colamd_recommended       /* returns recommended value of Alen, */
                                 /* or 0 if input arguments are erroneous */
@@ -228,6 +233,8 @@ void symamd_l_report
 (
     int64_t stats [COLAMD_STATS]
 ) ;
+
+void colamd_version (int version [3]) ;
 
 #ifdef __cplusplus
 }

@@ -1,8 +1,12 @@
 """Tests for SBML events, including piecewise expressions."""
 from copy import deepcopy
 
+import amici
 import numpy as np
 import pytest
+from amici.antimony_import import antimony2amici
+from amici.gradient_check import check_derivatives
+from amici.testing import TemporaryDirectoryWinSafe as TemporaryDirectory
 from amici.testing import skip_on_valgrind
 from util import (
     check_trajectories_with_forward_sensitivities,
@@ -704,3 +708,40 @@ def expm(x):
     from mpmath import expm
 
     return np.array(expm(x).tolist()).astype(float)
+
+
+def test_handling_of_fixed_time_point_event_triggers():
+    """Test handling of events without solver-tracked root functions."""
+    ant_model = """
+    model test_events_time_based
+        event_target = 0
+        bolus = 1
+        at (time > 1): event_target = 1
+        at (time > 2): event_target = event_target + bolus
+        at (time > 3): event_target = 3
+    end
+    """
+    module_name = "test_events_time_based"
+    with TemporaryDirectory(prefix=module_name, delete=False) as outdir:
+        antimony2amici(
+            ant_model,
+            model_name=module_name,
+            output_dir=outdir,
+            verbose=True,
+        )
+        model_module = amici.import_model_module(
+            module_name=module_name, module_path=outdir
+        )
+        amici_model = model_module.getModel()
+        assert amici_model.ne == 3
+        assert amici_model.ne_solver == 0
+        amici_model.setTimepoints(np.linspace(0, 4, 200))
+        amici_solver = amici_model.getSolver()
+        rdata = amici.runAmiciSimulation(amici_model, amici_solver)
+        assert rdata.status == amici.AMICI_SUCCESS
+        assert (rdata.x[rdata.ts < 1] == 0).all()
+        assert (rdata.x[(rdata.ts >= 1) & (rdata.ts < 2)] == 1).all()
+        assert (rdata.x[(rdata.ts >= 2) & (rdata.ts < 3)] == 2).all()
+        assert (rdata.x[(rdata.ts >= 3)] == 3).all()
+
+        check_derivatives(amici_model, amici_solver, edata=None)

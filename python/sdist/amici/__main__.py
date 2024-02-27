@@ -1,6 +1,5 @@
 """Package-level entrypoint"""
 
-import os
 import sys
 
 from . import __version__, compiledWithOpenMP, has_clibs, hdf5_enabled

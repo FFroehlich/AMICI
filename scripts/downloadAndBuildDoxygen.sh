@@ -9,7 +9,7 @@ DOXYGEN_DIR="${AMICI_PATH}"/ThirdParty/doxygen
 cd "${AMICI_PATH}"/ThirdParty
 if [[ ! -d ${DOXYGEN_DIR} ]]; then
   git clone --single-branch \
-            --branch Release_1_9_7 \
+            --branch Release_1_10_0 \
             --depth 1 \
             -c advice.detachedHead=false \
             https://github.com/doxygen/doxygen.git "${DOXYGEN_DIR}"

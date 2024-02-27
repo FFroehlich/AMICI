@@ -16,7 +16,8 @@ runs:
 
     - name: Install sonarcloud tools
       run: |
-        sudo apt-get install nodejs curl unzip \
+        sudo apt-get update \
+        && sudo apt-get install nodejs curl unzip \
         && curl --create-dirs -sSLo $HOME/.sonar/sonar-scanner.zip \
           https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$SONAR_SCANNER_VERSION-linux.zip \
         && unzip -o $HOME/.sonar/sonar-scanner.zip -d $HOME/.sonar/ \

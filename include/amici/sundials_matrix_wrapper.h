@@ -73,6 +73,11 @@ class SUNMatrixWrapper {
     ~SUNMatrixWrapper();
 
     /**
+     * @brief Conversion function.
+     */
+    operator SUNMatrix() { return get(); };
+
+    /**
      * @brief Copy constructor
      * @param other
      */
@@ -266,7 +271,7 @@ class SUNMatrixWrapper {
      * @brief Set the index values of a sparse matrix
      * @param vals rows (CSC) or columns (CSR) for data entries
      */
-    void set_indexvals(const gsl::span<sunindextype const> vals) {
+    void set_indexvals(gsl::span<sunindextype const> const vals) {
         assert(matrix_);
         assert(matrix_id() == SUNMATRIX_SPARSE);
         assert(gsl::narrow<sunindextype>(vals.size()) == capacity());
@@ -309,7 +314,7 @@ class SUNMatrixWrapper {
      * @param ptrs starting data-indices where the columns (CSC) or rows (CSR)
      * start
      */
-    void set_indexptrs(const gsl::span<sunindextype const> ptrs) {
+    void set_indexptrs(gsl::span<sunindextype const> const ptrs) {
         assert(matrix_);
         assert(matrix_id() == SUNMATRIX_SPARSE);
         assert(gsl::narrow<sunindextype>(ptrs.size()) == num_indexptrs() + 1);
@@ -357,7 +362,7 @@ class SUNMatrixWrapper {
      */
     void multiply(
         gsl::span<realtype> c, gsl::span<realtype const> b,
-        const realtype alpha = 1.0
+        realtype const alpha = 1.0
     ) const;
 
     /**
@@ -440,8 +445,8 @@ class SUNMatrixWrapper {
      * @return updated number of nonzeros in C
      */
     sunindextype scatter(
-        const sunindextype k, const realtype beta, sunindextype* w,
-        gsl::span<realtype> x, const sunindextype mark, SUNMatrixWrapper* C,
+        sunindextype const k, realtype const beta, sunindextype* w,
+        gsl::span<realtype> x, sunindextype const mark, SUNMatrixWrapper* C,
         sunindextype nnz
     ) const;
 
@@ -455,7 +460,7 @@ class SUNMatrixWrapper {
      * set to ncols/nrows
      */
     void transpose(
-        SUNMatrixWrapper& C, const realtype alpha, sunindextype blocksize
+        SUNMatrixWrapper& C, realtype const alpha, sunindextype blocksize
     ) const;
 
     /**

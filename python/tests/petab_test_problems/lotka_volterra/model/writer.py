@@ -1,6 +1,5 @@
 from pathlib import Path
 
-import petab
 import yaml2sbml
 
 yaml2sbml_yaml = "lotka_volterra.yaml"

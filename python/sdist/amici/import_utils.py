@@ -7,14 +7,11 @@ import sys
 from typing import (
     Any,
     Callable,
-    Dict,
-    Iterable,
     Optional,
-    Sequence,
     SupportsFloat,
-    Tuple,
     Union,
 )
+from collections.abc import Iterable, Sequence
 
 import sympy as sp
 from sympy.functions.elementary.piecewise import ExprCondPair
@@ -33,7 +30,7 @@ class SBMLException(Exception):
     pass
 
 
-SymbolDef = Dict[sp.Symbol, Union[Dict[str, sp.Expr], sp.Expr]]
+SymbolDef = dict[sp.Symbol, Union[dict[str, sp.Expr], sp.Expr]]
 
 
 # Monkey-patch toposort CircularDependencyError to handle non-sortable objects,
@@ -44,13 +41,13 @@ class CircularDependencyError(ValueError):
         #  error messages.  That's convenient for doctests.
         s = "Circular dependencies exist among these items: {{{}}}".format(
             ", ".join(
-                "{!r}:{!r}".format(key, value)
+                f"{key!r}:{value!r}"
                 for key, value in sorted(
                     {str(k): v for k, v in data.items()}.items()
                 )
             )
         )
-        super(CircularDependencyError, self).__init__(s)
+        super().__init__(s)
         self.data = data
 
 
@@ -72,7 +69,7 @@ class ObservableTransformation(str, enum.Enum):
 
 
 def noise_distribution_to_observable_transformation(
-    noise_distribution: Union[str, Callable]
+    noise_distribution: Union[str, Callable],
 ) -> ObservableTransformation:
     """
     Parse noise distribution string and extract observable transformation
@@ -93,7 +90,7 @@ def noise_distribution_to_observable_transformation(
 
 
 def noise_distribution_to_cost_function(
-    noise_distribution: Union[str, Callable]
+    noise_distribution: Union[str, Callable],
 ) -> Callable[[str], str]:
     """
     Parse noise distribution string to a cost function definition amici can
@@ -423,8 +420,8 @@ def _parse_special_functions(sym: sp.Expr, toplevel: bool = True) -> sp.Expr:
 
 
 def _denest_piecewise(
-    args: Sequence[Union[sp.Expr, sp.logic.boolalg.Boolean, bool]]
-) -> Tuple[Union[sp.Expr, sp.logic.boolalg.Boolean, bool]]:
+    args: Sequence[Union[sp.Expr, sp.logic.boolalg.Boolean, bool]],
+) -> tuple[Union[sp.Expr, sp.logic.boolalg.Boolean, bool]]:
     """
     Denest piecewise functions that contain piecewise as condition
 
@@ -548,7 +545,7 @@ def _parse_heaviside_trigger(trigger: sp.Expr) -> sp.Expr:
 
 def grouper(
     iterable: Iterable, n: int, fillvalue: Any = None
-) -> Iterable[Tuple[Any]]:
+) -> Iterable[tuple[Any]]:
     """
     Collect data into fixed-length chunks or blocks
 
@@ -734,5 +731,27 @@ def strip_pysb(symbol: sp.Basic) -> sp.Basic:
         return symbol
 
 
+def unique_preserve_order(seq: Sequence) -> list:
+    """Return a list of unique elements in Sequence, keeping only the first
+    occurrence of each element
+
+    Parameters:
+        seq: Sequence to prune
+
+    Returns:
+        List of unique elements in ``seq``
+    """
+    seen = set()
+    seen_add = seen.add
+    return [x for x in seq if not (x in seen or seen_add(x))]
+
+
 sbml_time_symbol = symbol_with_assumptions("time")
 amici_time_symbol = symbol_with_assumptions("t")
+
+
+def _default_simplify(x):
+    """Default simplification applied in DEModel"""
+    # We need this as a free function instead of a lambda to have it picklable
+    #  for parallel simplification
+    return sp.powsimp(x, deep=True)

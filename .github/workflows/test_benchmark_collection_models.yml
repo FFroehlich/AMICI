@@ -29,11 +29,11 @@ jobs:
 
     steps:
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 20
 
@@ -44,12 +44,12 @@ jobs:
 
     # install AMICI
     - name: Create AMICI sdist
-      run: |
-        pip3 install build && cd python/sdist && python3 -m build --sdist
+      run: pip3 install build && cd python/sdist && python3 -m build --sdist
+
     - name: Install AMICI sdist
       run: |
         pip3 install --user petab[vis] && \
-        AMICI_PARALLEL_COMPILE=2 pip3 install -v --user \
+        AMICI_PARALLEL_COMPILE="" pip3 install -v --user \
             $(ls -t python/sdist/dist/amici-*.tar.gz | head -1)[petab,test,vis]
 
     # retrieve test models
@@ -57,7 +57,7 @@ jobs:
       run: |
         git clone --depth 1 https://github.com/benchmarking-initiative/Benchmark-Models-PEtab.git \
           && export BENCHMARK_COLLECTION="$(pwd)/Benchmark-Models-PEtab/Benchmark-Models/" \
-          && AMICI_PARALLEL_COMPILE=2 tests/benchmark-models/test_benchmark_collection.sh
+          && AMICI_PARALLEL_COMPILE="" tests/benchmark-models/test_benchmark_collection.sh
 
     # run gradient checks
     - name: Run Gradient Checks
@@ -66,9 +66,9 @@ jobs:
           && cd tests/benchmark-models && pytest ./test_petab_benchmark.py
 
     # upload results
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
-        name: computation times
+        name: computation-times-${{ matrix.python-version }}-${{ matrix.extract_subexpressions }}
         path: |
           tests/benchmark-models/computation_times.csv
           tests/benchmark-models/computation_times.png

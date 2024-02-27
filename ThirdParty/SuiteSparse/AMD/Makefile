@@ -36,36 +36,36 @@ default: library
 
 # default is to install only in /usr/local
 library:
-	( cd build && cmake $(CMAKE_OPTIONS) .. && cmake --build . -j${JOBS} )
+	( cd build && cmake $(CMAKE_OPTIONS) .. && cmake --build . --config Release -j${JOBS} )
 
 # install only in SuiteSparse/lib and SuiteSparse/include
 local:
-	( cd build && cmake $(CMAKE_OPTIONS) -DLOCAL_INSTALL=1 .. && cmake --build . -j${JOBS} )
+	( cd build && cmake $(CMAKE_OPTIONS) -USUITESPARSE_PKGFILEDIR -DSUITESPARSE_LOCAL_INSTALL=1 .. && cmake --build . --config Release -j${JOBS} )
 
 # install only in /usr/local (default)
 global:
-	( cd build && cmake $(CMAKE_OPTIONS) -DLOCAL_INSTALL=0 .. && cmake --build . -j${JOBS} )
+	( cd build && cmake $(CMAKE_OPTIONS) -USUITESPARSE_PKGFILEDIR -DSUITESPARSE_LOCAL_INSTALL=0 .. && cmake --build . --config Release -j${JOBS} )
 
 debug:
-	( cd build && cmake $(CMAKE_OPTIONS) -DCMAKE_BUILD_TYPE=Debug .. && cmake --build . -j${JOBS} )
+	( cd build && cmake $(CMAKE_OPTIONS) -DCMAKE_BUILD_TYPE=Debug .. && cmake --build . --config Debug -j${JOBS} )
 
 all: library
 
 demos: library
-	( cd build && cmake $(CMAKE_OPTIONS) -DDEMO=1 .. && cmake --build . -j${JOBS} )
-	./build/amd_demo > build/amd_demo.out
-	- diff --strip-trailing-cr Demo/amd_demo.out build/amd_demo.out
-	./build/amd_l_demo > build/amd_l_demo.out
-	- diff --strip-trailing-cr Demo/amd_l_demo.out build/amd_l_demo.out
-	./build/amd_demo2 > build/amd_demo2.out
-	- diff --strip-trailing-cr Demo/amd_demo2.out build/amd_demo2.out
-	./build/amd_simple > build/amd_simple.out
-	- diff --strip-trailing-cr Demo/amd_simple.out build/amd_simple.out
+	( cd build && cmake $(CMAKE_OPTIONS) -DSUITESPARSE_DEMOS=1 .. && cmake --build . --config Release -j${JOBS} )
+	./build/amd_demo > build/amd_demo.out && ( command -v d2u && d2u ./build/amd_demo.out || true )
+	- diff Demo/amd_demo.out build/amd_demo.out
+	./build/amd_l_demo > build/amd_l_demo.out && ( command -v d2u && d2u ./build/amd_l_demo.out || true )
+	- diff Demo/amd_l_demo.out build/amd_l_demo.out
+	./build/amd_demo2 > build/amd_demo2.out && ( command -v d2u && d2u ./build/amd_demo2.out || true )
+	- diff Demo/amd_demo2.out build/amd_demo2.out
+	./build/amd_simple > build/amd_simple.out && ( command -v d2u && d2u ./build/amd_simple.out || true )
+	- diff Demo/amd_simple.out build/amd_simple.out
 	# Fortran demos will fail if no Fortran compiler is available
-	- ./build/amd_f77simple > build/amd_f77simple.out
-	- diff --strip-trailing-cr Demo/amd_f77simple.out build/amd_f77simple.out
-	- ./build/amd_f77demo > build/amd_f77demo.out
-	- diff --strip-trailing-cr Demo/amd_f77demo.out build/amd_f77demo.out
+	- ./build/amd_f77simple > build/amd_f77simple.out && ( command -v d2u && d2u ./build/amd_f77simple.out || true )
+	- diff Demo/amd_f77simple.out build/amd_f77simple.out
+	- ./build/amd_f77demo > build/amd_f77demo.out && ( command -v d2u && d2u ./build/amd_f77demo.out || true )
+	- diff Demo/amd_f77demo.out build/amd_f77demo.out
 
 # just compile after running cmake; do not run cmake again
 remake:

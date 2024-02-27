@@ -1,5 +1,5 @@
 name: Installation
-on: [push, merge_group, workflow_dispatch]
+on: [push, pull_request, merge_group, workflow_dispatch]
 
 jobs:
   archive:
@@ -13,11 +13,11 @@ jobs:
 
     steps:
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - run: git fetch --prune --unshallow
 
     - run: echo "AMICI_DIR=$(pwd)" >> $GITHUB_ENV
@@ -32,20 +32,16 @@ jobs:
             cmake
 
     - name: Build suitesparse
-      run: |
-        scripts/buildSuiteSparse.sh
+      run: scripts/buildSuiteSparse.sh
 
     - name: Build sundials
-      run: |
-        scripts/buildSundials.sh
+      run: scripts/buildSundials.sh
 
     - name: Build AMICI
-      run: |
-        scripts/buildAmici.sh
+      run: scripts/buildAmici.sh
 
     - name: Install python archive
-      run: |
-        scripts/installAmiciArchive.sh
+      run: scripts/installAmiciArchive.sh
 
   sdist_ubuntu:
     name: sdist Install Ubuntu
@@ -58,11 +54,11 @@ jobs:
 
     steps:
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - run: git fetch --prune --unshallow
 
     - run: echo "AMICI_DIR=$(pwd)" >> $GITHUB_ENV
@@ -71,16 +67,13 @@ jobs:
       uses: ./.github/actions/install-apt-dependencies
 
     - name: Create AMICI sdist
-      run: |
-        scripts/buildSdist.sh
+      run: scripts/buildSdist.sh
 
     - name: Install python sdist
-      run: |
-        pip3 install -v --user $(ls -t python/sdist/dist/amici-*.tar.gz | head -1)
+      run: pip3 install -v --user $(ls -t python/sdist/dist/amici-*.tar.gz | head -1)
 
     - name: Test import
-      run: |
-        python -m amici
+      run: python -m amici
 
 
   sdist_macos:
@@ -94,11 +87,11 @@ jobs:
 
     steps:
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - run: git fetch --prune --unshallow
 
     - run: echo "AMICI_DIR=$(pwd)" >> $GITHUB_ENV
@@ -113,13 +106,10 @@ jobs:
           && echo CPPFLAGS="-I /usr/local/Cellar/boost/1.81.0_1/include/" >> $GITHUB_ENV
 
     - name: Create AMICI sdist
-      run: |
-        scripts/buildSdist.sh
+      run: scripts/buildSdist.sh
 
     - name: Install python sdist
-      run: |
-        pip3 install -v --user $(ls -t python/sdist/dist/amici-*.tar.gz | head -1)
+      run: pip3 install -v --user $(ls -t python/sdist/dist/amici-*.tar.gz | head -1)
 
     - name: Test import
-      run: |
-        python -m amici
+      run: python -m amici

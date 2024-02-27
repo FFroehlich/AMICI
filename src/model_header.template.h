@@ -121,6 +121,7 @@ class Model_TPL_MODELNAME : public amici::Model_TPL_MODEL_TYPE_UPPER {
                   TPL_NZ,                                  // nz
                   TPL_NZTRUE,                              // nztrue
                   TPL_NEVENT,                              // nevent
+                  TPL_NEVENT_SOLVER,                       // nevent_solver
                   TPL_NSPL,                                // nspl
                   TPL_NOBJECTIVE,                          // nobjective
                   TPL_NW,                                  // nw
@@ -146,7 +147,8 @@ class Model_TPL_MODELNAME : public amici::Model_TPL_MODEL_TYPE_UPPER {
               true,                                        // pythonGenerated
               TPL_NDXDOTDP_EXPLICIT,                       // ndxdotdp_explicit
               TPL_NDXDOTDX_EXPLICIT,                       // ndxdotdx_explicit
-              TPL_W_RECURSION_DEPTH                        // w_recursion_depth
+              TPL_W_RECURSION_DEPTH,                       // w_recursion_depth
+              {TPL_STATE_INDEPENDENT_EVENTS}               // state-independent events
           ) {
                  root_initial_values_ = std::vector<bool>(
                      rootInitialValues.begin(), rootInitialValues.end()

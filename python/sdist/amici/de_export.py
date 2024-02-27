@@ -1,13 +1,15 @@
 """
 C++ Export
 ----------
-This module provides all necessary functionality specify an DE model and
-generate executable C++ simulation code. The user generally won't have to
-directly call any function from this module as this will be done by
+This module provides all necessary functionality to specify a differential
+equation model and generate executable C++ simulation code.
+The user generally won't have to directly call any function from this module
+as this will be done by
 :py:func:`amici.pysb_import.pysb2amici`,
 :py:func:`amici.sbml_import.SbmlImporter.sbml2amici` and
 :py:func:`amici.petab_import.import_model`.
 """
+from __future__ import annotations
 import contextlib
 import copy
 import itertools
@@ -15,26 +17,14 @@ import logging
 import os
 import re
 import shutil
-import subprocess
-import sys
-from dataclasses import dataclass
-from itertools import chain, starmap
+from itertools import chain
 from pathlib import Path
-from string import Template
 from typing import (
     TYPE_CHECKING,
-    Any,
     Callable,
-    Dict,
-    List,
     Literal,
-    Optional,
-    Sequence,
-    Set,
-    Tuple,
-    Union,
 )
-
+from collections.abc import Sequence
 import numpy as np
 import sympy as sp
 from sympy.matrices.dense import MutableDenseMatrix
@@ -48,23 +38,47 @@ from . import (
     amiciSwigPath,
     splines,
 )
-from .constants import SymbolId
-from .cxxcodeprinter import AmiciCxxCodePrinter, get_switch_statement
-from .de_model import *
+from ._codegen.cxx_functions import (
+    _FunctionInfo,
+    functions,
+    sparse_functions,
+    nobody_functions,
+    sensi_functions,
+    sparse_sensi_functions,
+    event_functions,
+    event_sensi_functions,
+    multiobs_functions,
+)
+from ._codegen.template import apply_template
+from .cxxcodeprinter import (
+    AmiciCxxCodePrinter,
+    get_switch_statement,
+    csc_matrix,
+)
+from .de_model_components import *
 from .import_utils import (
     ObservableTransformation,
     SBMLException,
     amici_time_symbol,
-    generate_flux_symbol,
     smart_subs_dict,
     strip_pysb,
-    symbol_with_assumptions,
     toposort_symbols,
+    unique_preserve_order,
+    _default_simplify,
 )
 from .logging import get_logger, log_execution_time, set_log_level
+from .compile import build_model_extension
+from .sympy_utils import (
+    _custom_pow_eval_derivative,
+    _monkeypatched,
+    smart_jacobian,
+    smart_multiply,
+    smart_is_zero_matrix,
+    _parallel_applyfunc,
+)
 
 if TYPE_CHECKING:
-    from . import sbml_import
+    from .splines import AbstractSpline
 
 
 # Template for model simulation main.cpp file
@@ -82,378 +96,10 @@ IDENTIFIER_PATTERN = re.compile(r"^[a-zA-Z_]\w*$")
 DERIVATIVE_PATTERN = re.compile(r"^d(x_rdata|xdot|\w+?)d(\w+?)(?:_explicit)?$")
 
 
-@dataclass
-class _FunctionInfo:
-    """Information on a model-specific generated C++ function
-
-    :ivar ode_arguments: argument list of the ODE function. input variables should be
-        ``const``.
-    :ivar dae_arguments: argument list of the DAE function, if different from ODE
-        function. input variables should be ``const``.
-    :ivar return_type: the return type of the function
-    :ivar assume_pow_positivity:
-        identifies the functions on which ``assume_pow_positivity`` will have
-        an effect when specified during model generation. generally these are
-        functions that are used for solving the ODE, where negative values may
-        negatively affect convergence of the integration algorithm
-    :ivar sparse:
-        specifies whether the result of this function will be stored in sparse
-        format. sparse format means that the function will only return an
-        array of nonzero values and not a full matrix.
-    :ivar generate_body:
-        indicates whether a model-specific implementation is to be generated
-    :ivar body:
-        the actual function body. will be filled later
-    """
-
-    ode_arguments: str = ""
-    dae_arguments: str = ""
-    return_type: str = "void"
-    assume_pow_positivity: bool = False
-    sparse: bool = False
-    generate_body: bool = True
-    body: str = ""
-
-    def arguments(self, ode: bool = True) -> str:
-        """Get the arguments for the ODE or DAE function"""
-        if ode or not self.dae_arguments:
-            return self.ode_arguments
-        return self.dae_arguments
-
-
-# Information on a model-specific generated C++ function
-# prototype for generated C++ functions, keys are the names of functions
-functions = {
-    "Jy": _FunctionInfo(
-        "realtype *Jy, const int iy, const realtype *p, "
-        "const realtype *k, const realtype *y, const realtype *sigmay, "
-        "const realtype *my"
-    ),
-    "dJydsigma": _FunctionInfo(
-        "realtype *dJydsigma, const int iy, const realtype *p, "
-        "const realtype *k, const realtype *y, const realtype *sigmay, "
-        "const realtype *my"
-    ),
-    "dJydy": _FunctionInfo(
-        "realtype *dJydy, const int iy, const realtype *p, "
-        "const realtype *k, const realtype *y, "
-        "const realtype *sigmay, const realtype *my",
-        sparse=True,
-    ),
-    "Jz": _FunctionInfo(
-        "realtype *Jz, const int iz, const realtype *p, const realtype *k, "
-        "const realtype *z, const realtype *sigmaz, const realtype *mz"
-    ),
-    "dJzdsigma": _FunctionInfo(
-        "realtype *dJzdsigma, const int iz, const realtype *p, "
-        "const realtype *k, const realtype *z, const realtype *sigmaz, "
-        "const realtype *mz"
-    ),
-    "dJzdz": _FunctionInfo(
-        "realtype *dJzdz, const int iz, const realtype *p, "
-        "const realtype *k, const realtype *z, const realtype *sigmaz, "
-        "const double *mz",
-    ),
-    "Jrz": _FunctionInfo(
-        "realtype *Jrz, const int iz, const realtype *p, "
-        "const realtype *k, const realtype *rz, const realtype *sigmaz"
-    ),
-    "dJrzdsigma": _FunctionInfo(
-        "realtype *dJrzdsigma, const int iz, const realtype *p, "
-        "const realtype *k, const realtype *rz, const realtype *sigmaz"
-    ),
-    "dJrzdz": _FunctionInfo(
-        "realtype *dJrzdz, const int iz, const realtype *p, "
-        "const realtype *k, const realtype *rz, const realtype *sigmaz",
-    ),
-    "root": _FunctionInfo(
-        "realtype *root, const realtype t, const realtype *x, "
-        "const realtype *p, const realtype *k, const realtype *h, "
-        "const realtype *tcl"
-    ),
-    "dwdp": _FunctionInfo(
-        "realtype *dwdp, const realtype t, const realtype *x, "
-        "const realtype *p, const realtype *k, const realtype *h, "
-        "const realtype *w, const realtype *tcl, const realtype *dtcldp, "
-        "const realtype *spl, const realtype *sspl",
-        assume_pow_positivity=True,
-        sparse=True,
-    ),
-    "dwdx": _FunctionInfo(
-        "realtype *dwdx, const realtype t, const realtype *x, "
-        "const realtype *p, const realtype *k, const realtype *h, "
-        "const realtype *w, const realtype *tcl, const realtype *spl",
-        assume_pow_positivity=True,
-        sparse=True,
-    ),
-    "create_splines": _FunctionInfo(
-        "const realtype *p, const realtype *k",
-        return_type="std::vector<HermiteSpline>",
-    ),
-    "spl": _FunctionInfo(generate_body=False),
-    "sspl": _FunctionInfo(generate_body=False),
-    "spline_values": _FunctionInfo(
-        "const realtype *p, const realtype *k", generate_body=False
-    ),
-    "spline_slopes": _FunctionInfo(
-        "const realtype *p, const realtype *k", generate_body=False
-    ),
-    "dspline_valuesdp": _FunctionInfo(
-        "realtype *dspline_valuesdp, const realtype *p, const realtype *k, const int ip"
-    ),
-    "dspline_slopesdp": _FunctionInfo(
-        "realtype *dspline_slopesdp, const realtype *p, const realtype *k, const int ip"
-    ),
-    "dwdw": _FunctionInfo(
-        "realtype *dwdw, const realtype t, const realtype *x, "
-        "const realtype *p, const realtype *k, const realtype *h, "
-        "const realtype *w, const realtype *tcl",
-        assume_pow_positivity=True,
-        sparse=True,
-    ),
-    "dxdotdw": _FunctionInfo(
-        "realtype *dxdotdw, const realtype t, const realtype *x, "
-        "const realtype *p, const realtype *k, const realtype *h, "
-        "const realtype *w",
-        "realtype *dxdotdw, const realtype t, const realtype *x, "
-        "const realtype *p, const realtype *k, const realtype *h, "
-        "const realtype *dx, const realtype *w",
-        assume_pow_positivity=True,
-        sparse=True,
-    ),
-    "dxdotdx_explicit": _FunctionInfo(
-        "realtype *dxdotdx_explicit, const realtype t, "
-        "const realtype *x, const realtype *p, const realtype *k, "
-        "const realtype *h, const realtype *w",
-        "realtype *dxdotdx_explicit, const realtype t, "
-        "const realtype *x, const realtype *p, const realtype *k, "
-        "const realtype *h, const realtype *dx, const realtype *w",
-        assume_pow_positivity=True,
-        sparse=True,
-    ),
-    "dxdotdp_explicit": _FunctionInfo(
-        "realtype *dxdotdp_explicit, const realtype t, "
-        "const realtype *x, const realtype *p, const realtype *k, "
-        "const realtype *h, const realtype *w",
-        "realtype *dxdotdp_explicit, const realtype t, "
-        "const realtype *x, const realtype *p, const realtype *k, "
-        "const realtype *h, const realtype *dx, const realtype *w",
-        assume_pow_positivity=True,
-        sparse=True,
-    ),
-    "dydx": _FunctionInfo(
-        "realtype *dydx, const realtype t, const realtype *x, "
-        "const realtype *p, const realtype *k, const realtype *h, "
-        "const realtype *w, const realtype *dwdx",
-    ),
-    "dydp": _FunctionInfo(
-        "realtype *dydp, const realtype t, const realtype *x, "
-        "const realtype *p, const realtype *k, const realtype *h, "
-        "const int ip, const realtype *w, const realtype *tcl, "
-        "const realtype *dtcldp, const realtype *spl, const realtype *sspl"
-    ),
-    "dzdx": _FunctionInfo(
-        "realtype *dzdx, const int ie, const realtype t, "
-        "const realtype *x, const realtype *p, const realtype *k, "
-        "const realtype *h",
-    ),
-    "dzdp": _FunctionInfo(
-        "realtype *dzdp, const int ie, const realtype t, "
-        "const realtype *x, const realtype *p, const realtype *k, "
-        "const realtype *h, const int ip",
-    ),
-    "drzdx": _FunctionInfo(
-        "realtype *drzdx, const int ie, const realtype t, "
-        "const realtype *x, const realtype *p, const realtype *k, "
-        "const realtype *h",
-    ),
-    "drzdp": _FunctionInfo(
-        "realtype *drzdp, const int ie, const realtype t, "
-        "const realtype *x, const realtype *p, const realtype *k, "
-        "const realtype *h, const int ip",
-    ),
-    "dsigmaydy": _FunctionInfo(
-        "realtype *dsigmaydy, const realtype t, const realtype *p, "
-        "const realtype *k, const realtype *y"
-    ),
-    "dsigmaydp": _FunctionInfo(
-        "realtype *dsigmaydp, const realtype t, const realtype *p, "
-        "const realtype *k, const realtype *y, const int ip",
-    ),
-    "sigmay": _FunctionInfo(
-        "realtype *sigmay, const realtype t, const realtype *p, "
-        "const realtype *k, const realtype *y",
-    ),
-    "dsigmazdp": _FunctionInfo(
-        "realtype *dsigmazdp, const realtype t, const realtype *p,"
-        " const realtype *k, const int ip",
-    ),
-    "sigmaz": _FunctionInfo(
-        "realtype *sigmaz, const realtype t, const realtype *p, "
-        "const realtype *k",
-    ),
-    "sroot": _FunctionInfo(
-        "realtype *stau, const realtype t, const realtype *x, "
-        "const realtype *p, const realtype *k, const realtype *h, "
-        "const realtype *sx, const int ip, const int ie, "
-        "const realtype *tcl",
-        generate_body=False,
-    ),
-    "drootdt": _FunctionInfo(generate_body=False),
-    "drootdt_total": _FunctionInfo(generate_body=False),
-    "drootdp": _FunctionInfo(generate_body=False),
-    "drootdx": _FunctionInfo(generate_body=False),
-    "stau": _FunctionInfo(
-        "realtype *stau, const realtype t, const realtype *x, "
-        "const realtype *p, const realtype *k, const realtype *h, "
-        "const realtype *tcl, const realtype *sx, const int ip, "
-        "const int ie"
-    ),
-    "deltax": _FunctionInfo(
-        "double *deltax, const realtype t, const realtype *x, "
-        "const realtype *p, const realtype *k, const realtype *h, "
-        "const int ie, const realtype *xdot, const realtype *xdot_old"
-    ),
-    "ddeltaxdx": _FunctionInfo(generate_body=False),
-    "ddeltaxdt": _FunctionInfo(generate_body=False),
-    "ddeltaxdp": _FunctionInfo(generate_body=False),
-    "deltasx": _FunctionInfo(
-        "realtype *deltasx, const realtype t, const realtype *x, "
-        "const realtype *p, const realtype *k, const realtype *h, "
-        "const realtype *w, const int ip, const int ie, "
-        "const realtype *xdot, const realtype *xdot_old, "
-        "const realtype *sx, const realtype *stau, const realtype *tcl"
-    ),
-    "w": _FunctionInfo(
-        "realtype *w, const realtype t, const realtype *x, "
-        "const realtype *p, const realtype *k, "
-        "const realtype *h, const realtype *tcl, const realtype *spl",
-        assume_pow_positivity=True,
-    ),
-    "x0": _FunctionInfo(
-        "realtype *x0, const realtype t, const realtype *p, "
-        "const realtype *k"
-    ),
-    "x0_fixedParameters": _FunctionInfo(
-        "realtype *x0_fixedParameters, const realtype t, "
-        "const realtype *p, const realtype *k, "
-        "gsl::span<const int> reinitialization_state_idxs",
-    ),
-    "sx0": _FunctionInfo(
-        "realtype *sx0, const realtype t, const realtype *x, "
-        "const realtype *p, const realtype *k, const int ip",
-    ),
-    "sx0_fixedParameters": _FunctionInfo(
-        "realtype *sx0_fixedParameters, const realtype t, "
-        "const realtype *x0, const realtype *p, const realtype *k, "
-        "const int ip, gsl::span<const int> reinitialization_state_idxs",
-    ),
-    "xdot": _FunctionInfo(
-        "realtype *xdot, const realtype t, const realtype *x, "
-        "const realtype *p, const realtype *k, const realtype *h, "
-        "const realtype *w",
-        "realtype *xdot, const realtype t, const realtype *x, "
-        "const realtype *p, const realtype *k, const realtype *h, "
-        "const realtype *dx, const realtype *w",
-        assume_pow_positivity=True,
-    ),
-    "xdot_old": _FunctionInfo(generate_body=False),
-    "y": _FunctionInfo(
-        "realtype *y, const realtype t, const realtype *x, "
-        "const realtype *p, const realtype *k, "
-        "const realtype *h, const realtype *w",
-    ),
-    "x_rdata": _FunctionInfo(
-        "realtype *x_rdata, const realtype *x, const realtype *tcl, "
-        "const realtype *p, const realtype *k"
-    ),
-    "total_cl": _FunctionInfo(
-        "realtype *total_cl, const realtype *x_rdata, "
-        "const realtype *p, const realtype *k"
-    ),
-    "dtotal_cldp": _FunctionInfo(
-        "realtype *dtotal_cldp, const realtype *x_rdata, "
-        "const realtype *p, const realtype *k, const int ip"
-    ),
-    "dtotal_cldx_rdata": _FunctionInfo(
-        "realtype *dtotal_cldx_rdata, const realtype *x_rdata, "
-        "const realtype *p, const realtype *k, const realtype *tcl",
-        sparse=True,
-    ),
-    "x_solver": _FunctionInfo("realtype *x_solver, const realtype *x_rdata"),
-    "dx_rdatadx_solver": _FunctionInfo(
-        "realtype *dx_rdatadx_solver, const realtype *x, "
-        "const realtype *tcl, const realtype *p, const realtype *k",
-        sparse=True,
-    ),
-    "dx_rdatadp": _FunctionInfo(
-        "realtype *dx_rdatadp, const realtype *x, "
-        "const realtype *tcl, const realtype *p, const realtype *k, "
-        "const int ip"
-    ),
-    "dx_rdatadtcl": _FunctionInfo(
-        "realtype *dx_rdatadtcl, const realtype *x, "
-        "const realtype *tcl, const realtype *p, const realtype *k",
-        sparse=True,
-    ),
-    "z": _FunctionInfo(
-        "realtype *z, const int ie, const realtype t, const realtype *x, "
-        "const realtype *p, const realtype *k, const realtype *h"
-    ),
-    "rz": _FunctionInfo(
-        "realtype *rz, const int ie, const realtype t, const realtype *x, "
-        "const realtype *p, const realtype *k, const realtype *h"
-    ),
-}
-
-# list of sparse functions
-sparse_functions = [
-    func_name for func_name, func_info in functions.items() if func_info.sparse
-]
-# list of nobody functions
-nobody_functions = [
-    func_name
-    for func_name, func_info in functions.items()
-    if not func_info.generate_body
-]
-# list of sensitivity functions
-sensi_functions = [
-    func_name
-    for func_name, func_info in functions.items()
-    if "const int ip" in func_info.arguments()
-]
-# list of sensitivity functions
-sparse_sensi_functions = [
-    func_name
-    for func_name, func_info in functions.items()
-    if "const int ip" not in func_info.arguments()
-    and func_name.endswith("dp")
-    or func_name.endswith("dp_explicit")
-]
-# list of event functions
-event_functions = [
-    func_name
-    for func_name, func_info in functions.items()
-    if "const int ie" in func_info.arguments()
-    and "const int ip" not in func_info.arguments()
-]
-event_sensi_functions = [
-    func_name
-    for func_name, func_info in functions.items()
-    if "const int ie" in func_info.arguments()
-    and "const int ip" in func_info.arguments()
-]
-# list of multiobs functions
-multiobs_functions = [
-    func_name
-    for func_name, func_info in functions.items()
-    if "const int iy" in func_info.arguments()
-    or "const int iz" in func_info.arguments()
-]
-# list of equations that have ids which may not be unique
+#: list of equations that have ids which may not be unique
 non_unique_id_symbols = ["x_rdata", "y"]
 
-# custom c++ function replacements
+#: custom c++ function replacements
 CUSTOM_FUNCTIONS = [
     {
         "sympy": "polygamma",
@@ -465,7 +111,7 @@ CUSTOM_FUNCTIONS = [
     {"sympy": "DiracDelta", "c++": "amici::dirac"},
 ]
 
-# python log manager
+#: python log manager
 logger = get_logger(__name__, logging.ERROR)
 
 
@@ -489,128 +135,6 @@ def var_in_function_signature(name: str, varname: str, ode: bool) -> bool:
         rf"const (realtype|double) \*{varname}[0]*(,|$)+",
         functions[name].arguments(ode=ode),
     )
-
-
-# defines the type of some attributes in DEModel
-symbol_to_type = {
-    SymbolId.SPECIES: DifferentialState,
-    SymbolId.ALGEBRAIC_STATE: AlgebraicState,
-    SymbolId.ALGEBRAIC_EQUATION: AlgebraicEquation,
-    SymbolId.PARAMETER: Parameter,
-    SymbolId.FIXED_PARAMETER: Constant,
-    SymbolId.OBSERVABLE: Observable,
-    SymbolId.EVENT_OBSERVABLE: EventObservable,
-    SymbolId.SIGMAY: SigmaY,
-    SymbolId.SIGMAZ: SigmaZ,
-    SymbolId.LLHY: LogLikelihoodY,
-    SymbolId.LLHZ: LogLikelihoodZ,
-    SymbolId.LLHRZ: LogLikelihoodRZ,
-    SymbolId.EXPRESSION: Expression,
-    SymbolId.EVENT: Event,
-}
-
-
-@log_execution_time("running smart_jacobian", logger)
-def smart_jacobian(
-    eq: sp.MutableDenseMatrix, sym_var: sp.MutableDenseMatrix
-) -> sp.MutableSparseMatrix:
-    """
-    Wrapper around symbolic jacobian with some additional checks that reduce
-    computation time for large matrices
-
-    :param eq:
-        equation
-    :param sym_var:
-        differentiation variable
-    :return:
-        jacobian of eq wrt sym_var
-    """
-    nrow = eq.shape[0]
-    ncol = sym_var.shape[0]
-    if (
-        not min(eq.shape)
-        or not min(sym_var.shape)
-        or smart_is_zero_matrix(eq)
-        or smart_is_zero_matrix(sym_var)
-    ):
-        return sp.MutableSparseMatrix(nrow, ncol, dict())
-
-    # preprocess sparsity pattern
-    elements = (
-        (i, j, a, b)
-        for i, a in enumerate(eq)
-        for j, b in enumerate(sym_var)
-        if a.has(b)
-    )
-
-    if (n_procs := int(os.environ.get("AMICI_IMPORT_NPROCS", 1))) == 1:
-        # serial
-        return sp.MutableSparseMatrix(
-            nrow, ncol, dict(starmap(_jacobian_element, elements))
-        )
-
-    # parallel
-    from multiprocessing import get_context
-
-    # "spawn" should avoid potential deadlocks occurring with fork
-    #  see e.g. https://stackoverflow.com/a/66113051
-    ctx = get_context("spawn")
-    with ctx.Pool(n_procs) as p:
-        mapped = p.starmap(_jacobian_element, elements)
-    return sp.MutableSparseMatrix(nrow, ncol, dict(mapped))
-
-
-@log_execution_time("running smart_multiply", logger)
-def smart_multiply(
-    x: Union[sp.MutableDenseMatrix, sp.MutableSparseMatrix],
-    y: sp.MutableDenseMatrix,
-) -> Union[sp.MutableDenseMatrix, sp.MutableSparseMatrix]:
-    """
-    Wrapper around symbolic multiplication with some additional checks that
-    reduce computation time for large matrices
-
-    :param x:
-        educt 1
-    :param y:
-        educt 2
-    :return:
-        product
-    """
-    if (
-        not x.shape[0]
-        or not y.shape[1]
-        or smart_is_zero_matrix(x)
-        or smart_is_zero_matrix(y)
-    ):
-        return sp.zeros(x.shape[0], y.shape[1])
-    return x.multiply(y)
-
-
-def smart_is_zero_matrix(
-    x: Union[sp.MutableDenseMatrix, sp.MutableSparseMatrix]
-) -> bool:
-    """A faster implementation of sympy's is_zero_matrix
-
-    Avoids repeated indexer type checks and double iteration to distinguish
-    False/None. Found to be about 100x faster for large matrices.
-
-    :param x: Matrix to check
-    """
-
-    if isinstance(x, sp.MutableDenseMatrix):
-        return all(xx.is_zero is True for xx in x.flat())
-
-    if isinstance(x, list):
-        return all(smart_is_zero_matrix(xx) for xx in x)
-
-    return x.nnz() == 0
-
-
-def _default_simplify(x):
-    """Default simplification applied in DEModel"""
-    # We need this as a free function instead of a lambda to have it picklable
-    #  for parallel simplification
-    return sp.powsimp(x, deep=True)
 
 
 class DEModel:
@@ -730,8 +254,9 @@ class DEModel:
         whether all observables have a gaussian noise model, i.e. whether
         res and FIM make sense.
 
-    :ivar _code_printer:
-        Code printer to generate C++ code
+    :ivar _static_indices:
+        dict of lists list of indices of static variables for different
+        model entities.
 
     :ivar _z2event:
         list of event indices for each event observable
@@ -739,8 +264,8 @@ class DEModel:
 
     def __init__(
         self,
-        verbose: Optional[Union[bool, int]] = False,
-        simplify: Optional[Callable] = _default_simplify,
+        verbose: bool | int | None = False,
+        simplify: Callable | None = _default_simplify,
         cache_simplify: bool = False,
     ):
         """
@@ -757,23 +282,23 @@ class DEModel:
             Whether to cache calls to the simplify method. Can e.g. decrease
             import times for models with events.
         """
-        self._differential_states: List[DifferentialState] = []
-        self._algebraic_states: List[AlgebraicState] = []
-        self._algebraic_equations: List[AlgebraicEquation] = []
-        self._observables: List[Observable] = []
-        self._event_observables: List[EventObservable] = []
-        self._sigma_ys: List[SigmaY] = []
-        self._sigma_zs: List[SigmaZ] = []
-        self._parameters: List[Parameter] = []
-        self._constants: List[Constant] = []
-        self._log_likelihood_ys: List[LogLikelihoodY] = []
-        self._log_likelihood_zs: List[LogLikelihoodZ] = []
-        self._log_likelihood_rzs: List[LogLikelihoodRZ] = []
-        self._expressions: List[Expression] = []
-        self._conservation_laws: List[ConservationLaw] = []
-        self._events: List[Event] = []
-        self.splines = []
-        self._symboldim_funs: Dict[str, Callable[[], int]] = {
+        self._differential_states: list[DifferentialState] = []
+        self._algebraic_states: list[AlgebraicState] = []
+        self._algebraic_equations: list[AlgebraicEquation] = []
+        self._observables: list[Observable] = []
+        self._event_observables: list[EventObservable] = []
+        self._sigma_ys: list[SigmaY] = []
+        self._sigma_zs: list[SigmaZ] = []
+        self._parameters: list[Parameter] = []
+        self._constants: list[Constant] = []
+        self._log_likelihood_ys: list[LogLikelihoodY] = []
+        self._log_likelihood_zs: list[LogLikelihoodZ] = []
+        self._log_likelihood_rzs: list[LogLikelihoodRZ] = []
+        self._expressions: list[Expression] = []
+        self._conservation_laws: list[ConservationLaw] = []
+        self._events: list[Event] = []
+        self._splines: list[AbstractSpline] = []
+        self._symboldim_funs: dict[str, Callable[[], int]] = {
             "sx": self.num_states_solver,
             "v": self.num_states_solver,
             "vB": self.num_states_solver,
@@ -781,23 +306,19 @@ class DEModel:
             "sigmay": self.num_obs,
             "sigmaz": self.num_eventobs,
         }
-        self._eqs: Dict[
+        self._eqs: dict[
             str,
-            Union[
-                sp.Matrix,
-                sp.SparseMatrix,
-                List[Union[sp.Matrix, sp.SparseMatrix]],
-            ],
+            (sp.Matrix | sp.SparseMatrix | list[sp.Matrix | sp.SparseMatrix]),
         ] = dict()
-        self._sparseeqs: Dict[str, Union[sp.Matrix, List[sp.Matrix]]] = dict()
-        self._vals: Dict[str, List[sp.Expr]] = dict()
-        self._names: Dict[str, List[str]] = dict()
-        self._syms: Dict[str, Union[sp.Matrix, List[sp.Matrix]]] = dict()
-        self._sparsesyms: Dict[str, Union[List[str], List[List[str]]]] = dict()
-        self._colptrs: Dict[str, Union[List[int], List[List[int]]]] = dict()
-        self._rowvals: Dict[str, Union[List[int], List[List[int]]]] = dict()
+        self._sparseeqs: dict[str, sp.Matrix | list[sp.Matrix]] = dict()
+        self._vals: dict[str, list[sp.Expr]] = dict()
+        self._names: dict[str, list[str]] = dict()
+        self._syms: dict[str, sp.Matrix | list[sp.Matrix]] = dict()
+        self._sparsesyms: dict[str, list[str] | list[list[str]]] = dict()
+        self._colptrs: dict[str, list[int] | list[list[int]]] = dict()
+        self._rowvals: dict[str, list[int] | list[list[int]]] = dict()
 
-        self._equation_prototype: Dict[str, Callable] = {
+        self._equation_prototype: dict[str, Callable] = {
             "total_cl": self.conservation_laws,
             "x0": self.states,
             "y": self.observables,
@@ -809,7 +330,7 @@ class DEModel:
             "sigmay": self.sigma_ys,
             "sigmaz": self.sigma_zs,
         }
-        self._variable_prototype: Dict[str, Callable] = {
+        self._variable_prototype: dict[str, Callable] = {
             "tcl": self.conservation_laws,
             "x_rdata": self.states,
             "y": self.observables,
@@ -821,12 +342,12 @@ class DEModel:
             "sigmaz": self.sigma_zs,
             "h": self.events,
         }
-        self._value_prototype: Dict[str, Callable] = {
+        self._value_prototype: dict[str, Callable] = {
             "p": self.parameters,
             "k": self.constants,
         }
-        self._total_derivative_prototypes: Dict[
-            str, Dict[str, Union[str, List[str]]]
+        self._total_derivative_prototypes: dict[
+            str, dict[str, str | list[str]]
         ] = {
             "sroot": {
                 "eq": "root",
@@ -836,13 +357,13 @@ class DEModel:
             },
         }
 
-        self._lock_total_derivative: List[str] = list()
+        self._lock_total_derivative: list[str] = list()
         self._simplify: Callable = simplify
         if cache_simplify and simplify is not None:
 
             def cached_simplify(
                 expr: sp.Expr,
-                _simplified: Dict[str, sp.Expr] = {},
+                _simplified: dict[str, sp.Expr] = {},  # noqa B006
                 _simplify: Callable = simplify,
             ) -> sp.Expr:
                 """Speed up expression simplification with caching.
@@ -869,68 +390,66 @@ class DEModel:
                 return _simplified[expr_str]
 
             self._simplify = cached_simplify
-        self._x0_fixedParameters_idx: Union[None, Sequence[int]]
+        self._x0_fixedParameters_idx: None | Sequence[int]
         self._w_recursion_depth: int = 0
         self._has_quadratic_nllh: bool = True
         set_log_level(logger, verbose)
 
-        self._code_printer = AmiciCxxCodePrinter()
-        for fun in CUSTOM_FUNCTIONS:
-            self._code_printer.known_functions[fun["sympy"]] = fun["c++"]
+        self._static_indices: dict[str, list[int]] = {}
 
-    def differential_states(self) -> List[DifferentialState]:
+    def differential_states(self) -> list[DifferentialState]:
         """Get all differential states."""
         return self._differential_states
 
-    def algebraic_states(self) -> List[AlgebraicState]:
+    def algebraic_states(self) -> list[AlgebraicState]:
         """Get all algebraic states."""
         return self._algebraic_states
 
-    def observables(self) -> List[Observable]:
+    def observables(self) -> list[Observable]:
         """Get all observables."""
         return self._observables
 
-    def parameters(self) -> List[Parameter]:
+    def parameters(self) -> list[Parameter]:
         """Get all parameters."""
         return self._parameters
 
-    def constants(self) -> List[Constant]:
+    def constants(self) -> list[Constant]:
         """Get all constants."""
         return self._constants
 
-    def expressions(self) -> List[Expression]:
+    def expressions(self) -> list[Expression]:
         """Get all expressions."""
         return self._expressions
 
-    def events(self) -> List[Event]:
+    def events(self) -> list[Event]:
         """Get all events."""
         return self._events
 
-    def event_observables(self) -> List[EventObservable]:
+    def event_observables(self) -> list[EventObservable]:
         """Get all event observables."""
         return self._event_observables
 
-    def sigma_ys(self) -> List[SigmaY]:
+    def sigma_ys(self) -> list[SigmaY]:
         """Get all observable sigmas."""
         return self._sigma_ys
 
-    def sigma_zs(self) -> List[SigmaZ]:
+    def sigma_zs(self) -> list[SigmaZ]:
         """Get all event observable sigmas."""
         return self._sigma_zs
 
-    def conservation_laws(self) -> List[ConservationLaw]:
+    def conservation_laws(self) -> list[ConservationLaw]:
         """Get all conservation laws."""
         return self._conservation_laws
 
-    def log_likelihood_ys(self) -> List[LogLikelihoodY]:
+    def log_likelihood_ys(self) -> list[LogLikelihoodY]:
         """Get all observable log likelihoodss."""
         return self._log_likelihood_ys
 
-    def log_likelihood_zs(self) -> List[LogLikelihoodZ]:
+    def log_likelihood_zs(self) -> list[LogLikelihoodZ]:
         """Get all event observable log likelihoods."""
         return self._log_likelihood_zs
 
-    def log_likelihood_rzs(self) -> List[LogLikelihoodRZ]:
+    def log_likelihood_rzs(self) -> list[LogLikelihoodRZ]:
         """Get all event observable regularization log likelihoods."""
         return self._log_likelihood_rzs
 
@@ -938,194 +457,11 @@ class DEModel:
         """Check if model is ODE model."""
         return len(self._algebraic_equations) == 0
 
-    def states(self) -> List[State]:
+    def states(self) -> list[State]:
         """Get all states."""
         return self._differential_states + self._algebraic_states
 
-    @log_execution_time("importing SbmlImporter", logger)
-    def import_from_sbml_importer(
-        self,
-        si: "sbml_import.SbmlImporter",
-        compute_cls: Optional[bool] = True,
-    ) -> None:
-        """
-        Imports a model specification from a
-        :class:`amici.sbml_import.SbmlImporter` instance.
-
-        :param si:
-            imported SBML model
-        :param compute_cls:
-            whether to compute conservation laws
-        """
-
-        # add splines as expressions to the model
-        # saved for later substituting into the fluxes
-        spline_subs = {}
-
-        for ispl, spl in enumerate(si.splines):
-            spline_expr = spl.ode_model_symbol(si)
-            spline_subs[spl.sbml_id] = spline_expr
-            self.add_component(
-                Expression(
-                    identifier=spl.sbml_id,
-                    name=str(spl.sbml_id),
-                    value=spline_expr,
-                )
-            )
-        self.splines = si.splines
-
-        # get symbolic expression from SBML importers
-        symbols = copy.copy(si.symbols)
-
-        # assemble fluxes and add them as expressions to the model
-        assert len(si.flux_ids) == len(si.flux_vector)
-        fluxes = [
-            generate_flux_symbol(ir, name=flux_id)
-            for ir, flux_id in enumerate(si.flux_ids)
-        ]
-
-        # correct time derivatives for compartment changes
-        def transform_dxdt_to_concentration(species_id, dxdt):
-            """
-            Produces the appropriate expression for the first derivative of a
-            species with respect to time, for species that reside in
-            compartments with a constant volume, or a volume that is defined by
-            an assignment or rate rule.
-
-            :param species_id:
-                The identifier of the species (generated in "sbml_import.py").
-
-            :param dxdt:
-                The element-wise product of the row in the stoichiometric
-                matrix that corresponds to the species (row x_index) and the
-                flux (kinetic laws) vector. Ignored in the case of rate rules.
-            """
-            # The derivation of the below return expressions can be found in
-            # the documentation. They are found by rearranging
-            # $\frac{d}{dt} (vx) = Sw$ for $\frac{dx}{dt}$, where $v$ is the
-            # vector of species compartment volumes, $x$ is the vector of
-            # species concentrations, $S$ is the stoichiometric matrix, and $w$
-            # is the flux vector. The conditional below handles the cases of
-            # species in (i) compartments with a rate rule, (ii) compartments
-            # with an assignment rule, and (iii) compartments with a constant
-            # volume, respectively.
-            species = si.symbols[SymbolId.SPECIES][species_id]
-
-            comp = species["compartment"]
-            if comp in si.symbols[SymbolId.SPECIES]:
-                dv_dt = si.symbols[SymbolId.SPECIES][comp]["dt"]
-                xdot = (dxdt - dv_dt * species_id) / comp
-                return xdot
-            elif comp in si.compartment_assignment_rules:
-                v = si.compartment_assignment_rules[comp]
-
-                # we need to flatten out assignments in the compartment in
-                # order to ensure that we catch all species dependencies
-                v = smart_subs_dict(
-                    v, si.symbols[SymbolId.EXPRESSION], "value"
-                )
-                dv_dt = v.diff(amici_time_symbol)
-                # we may end up with a time derivative of the compartment
-                # volume due to parameter rate rules
-                comp_rate_vars = [
-                    p
-                    for p in v.free_symbols
-                    if p in si.symbols[SymbolId.SPECIES]
-                ]
-                for var in comp_rate_vars:
-                    dv_dt += (
-                        v.diff(var) * si.symbols[SymbolId.SPECIES][var]["dt"]
-                    )
-                dv_dx = v.diff(species_id)
-                xdot = (dxdt - dv_dt * species_id) / (dv_dx * species_id + v)
-                return xdot
-            elif comp in si.symbols[SymbolId.ALGEBRAIC_STATE]:
-                raise SBMLException(
-                    f"Species {species_id} is in a compartment {comp} that is"
-                    f" defined by an algebraic equation. This is not"
-                    f" supported."
-                )
-            else:
-                v = si.compartments[comp]
-
-                if v == 1.0:
-                    return dxdt
-
-                return dxdt / v
-
-        # create dynamics without respecting conservation laws first
-        dxdt = smart_multiply(
-            si.stoichiometric_matrix, MutableDenseMatrix(fluxes)
-        )
-        for ix, ((species_id, species), formula) in enumerate(
-            zip(symbols[SymbolId.SPECIES].items(), dxdt)
-        ):
-            # rate rules and amount species don't need to be updated
-            if "dt" in species:
-                continue
-            if species["amount"]:
-                species["dt"] = formula
-            else:
-                species["dt"] = transform_dxdt_to_concentration(
-                    species_id, formula
-                )
-
-        # create all basic components of the DE model and add them.
-        for symbol_name in symbols:
-            # transform dict of lists into a list of dicts
-            args = ["name", "identifier"]
-
-            if symbol_name == SymbolId.SPECIES:
-                args += ["dt", "init"]
-            elif symbol_name == SymbolId.ALGEBRAIC_STATE:
-                args += ["init"]
-            else:
-                args += ["value"]
-
-            if symbol_name == SymbolId.EVENT:
-                args += ["state_update", "initial_value"]
-            elif symbol_name == SymbolId.OBSERVABLE:
-                args += ["transformation"]
-            elif symbol_name == SymbolId.EVENT_OBSERVABLE:
-                args += ["event"]
-
-            comp_kwargs = [
-                {
-                    "identifier": var_id,
-                    **{k: v for k, v in var.items() if k in args},
-                }
-                for var_id, var in symbols[symbol_name].items()
-            ]
-
-            for comp_kwarg in comp_kwargs:
-                self.add_component(symbol_to_type[symbol_name](**comp_kwarg))
-
-        # add fluxes as expressions, this needs to happen after base
-        # expressions from symbols have been parsed
-        for flux_id, flux in zip(fluxes, si.flux_vector):
-            # replace splines inside fluxes
-            flux = flux.subs(spline_subs)
-            self.add_component(
-                Expression(identifier=flux_id, name=str(flux_id), value=flux)
-            )
-
-        # process conservation laws
-        if compute_cls:
-            si.process_conservation_laws(self)
-
-        # fill in 'self._sym' based on prototypes and components in ode_model
-        self.generate_basic_variables()
-        self._has_quadratic_nllh = all(
-            llh["dist"]
-            in ["normal", "lin-normal", "log-normal", "log10-normal"]
-            for llh in si.symbols[SymbolId.LLHY].values()
-        )
-
-        self._process_sbml_rate_of(
-            symbols
-        )  # substitute SBML-rateOf constructs
-
-    def _process_sbml_rate_of(self, symbols) -> None:
+    def _process_sbml_rate_of(self) -> None:
         """Substitute any SBML-rateOf constructs in the model equations"""
         rate_of_func = sp.core.function.UndefinedFunction("rateOf")
         species_sym_to_xdot = dict(zip(self.sym("x"), self.sym("xdot")))
@@ -1133,8 +469,6 @@ class DEModel:
 
         def get_rate(symbol: sp.Symbol):
             """Get rate of change of the given symbol"""
-            nonlocal symbols
-
             if symbol.find(rate_of_func):
                 raise SBMLException("Nesting rateOf() is not allowed.")
 
@@ -1146,6 +480,7 @@ class DEModel:
             return 0
 
         # replace rateOf-instances in xdot by xdot symbols
+        made_substitutions = False
         for i_state in range(len(self.eq("xdot"))):
             if rate_ofs := self._eqs["xdot"][i_state].find(rate_of_func):
                 self._eqs["xdot"][i_state] = self._eqs["xdot"][i_state].subs(
@@ -1155,9 +490,14 @@ class DEModel:
                         for rate_of in rate_ofs
                     }
                 )
-        # substitute in topological order
-        subs = toposort_symbols(dict(zip(self.sym("xdot"), self.eq("xdot"))))
-        self._eqs["xdot"] = smart_subs_dict(self.eq("xdot"), subs)
+                made_substitutions = True
+
+        if made_substitutions:
+            # substitute in topological order
+            subs = toposort_symbols(
+                dict(zip(self.sym("xdot"), self.eq("xdot")))
+            )
+            self._eqs["xdot"] = smart_subs_dict(self.eq("xdot"), subs)
 
         # replace rateOf-instances in x0 by xdot equation
         for i_state in range(len(self.eq("x0"))):
@@ -1169,9 +509,55 @@ class DEModel:
                     }
                 )
 
+        # replace rateOf-instances in w by xdot equation
+        #  here we may need toposort, as xdot may depend on w
+        made_substitutions = False
+        for i_expr in range(len(self.eq("w"))):
+            if rate_ofs := self._eqs["w"][i_expr].find(rate_of_func):
+                self._eqs["w"][i_expr] = self._eqs["w"][i_expr].subs(
+                    {
+                        rate_of: get_rate(rate_of.args[0])
+                        for rate_of in rate_ofs
+                    }
+                )
+                made_substitutions = True
+
+        if made_substitutions:
+            # Sort expressions in self._expressions, w symbols, and w equations
+            #  in topological order. Ideally, this would already happen before
+            #  adding the expressions to the model, but at that point, we don't
+            #  have access to xdot yet.
+            # NOTE: elsewhere, conservations law expressions are expected to
+            #  occur before any other w expressions, so we must maintain their
+            #  position
+            # toposort everything but conservation law expressions,
+            #  then prepend conservation laws
+            w_sorted = toposort_symbols(
+                dict(
+                    zip(
+                        self.sym("w")[self.num_cons_law() :, :],
+                        self.eq("w")[self.num_cons_law() :, :],
+                    )
+                )
+            )
+            w_sorted = (
+                dict(
+                    zip(
+                        self.sym("w")[: self.num_cons_law(), :],
+                        self.eq("w")[: self.num_cons_law(), :],
+                    )
+                )
+                | w_sorted
+            )
+            old_syms = tuple(self._syms["w"])
+            topo_expr_syms = tuple(w_sorted.keys())
+            new_order = [old_syms.index(s) for s in topo_expr_syms]
+            self._expressions = [self._expressions[i] for i in new_order]
+            self._syms["w"] = sp.Matrix(topo_expr_syms)
+            self._eqs["w"] = sp.Matrix(list(w_sorted.values()))
+
         for component in chain(
             self.observables(),
-            self.expressions(),
             self.events(),
             self._algebraic_equations,
         ):
@@ -1215,7 +601,7 @@ class DEModel:
                     # )
 
     def add_component(
-        self, component: ModelQuantity, insert_first: Optional[bool] = False
+        self, component: ModelQuantity, insert_first: bool | None = False
     ) -> None:
         """
         Adds a new ModelQuantity to the model.
@@ -1265,7 +651,7 @@ class DEModel:
         self,
         state: sp.Symbol,
         total_abundance: sp.Symbol,
-        coefficients: Dict[sp.Symbol, sp.Expr],
+        coefficients: dict[sp.Symbol, sp.Expr],
     ) -> None:
         r"""
         Adds a new conservation law to the model. A conservation law is defined
@@ -1331,7 +717,25 @@ class DEModel:
         self.add_component(cl)
         self._differential_states[ix].set_conservation_law(cl)
 
-    def get_observable_transformations(self) -> List[ObservableTransformation]:
+    def add_spline(self, spline: AbstractSpline, spline_expr: sp.Expr) -> None:
+        """Add a spline to the model.
+
+        :param spline:
+            Spline instance to be added
+        :param spline_expr:
+            Sympy function representation of `spline` from
+            ``spline.ode_model_symbol()``.
+        """
+        self._splines.append(spline)
+        self.add_component(
+            Expression(
+                identifier=spline.sbml_id,
+                name=str(spline.sbml_id),
+                value=spline_expr,
+            )
+        )
+
+    def get_observable_transformations(self) -> list[ObservableTransformation]:
         """
         List of observable transformations
 
@@ -1426,12 +830,23 @@ class DEModel:
 
     def num_events(self) -> int:
         """
+        Total number of Events (those for which root-functions are added and those without).
+
+        :return:
+            number of events
+        """
+        return len(self.sym("h"))
+
+    def num_events_solver(self) -> int:
+        """
         Number of Events.
 
         :return:
             number of event symbols (length of the root vector in AMICI)
         """
-        return len(self.sym("h"))
+        return sum(
+            not event.triggers_at_fixed_timepoint() for event in self.events()
+        )
 
     def sym(self, name: str) -> sp.Matrix:
         """
@@ -1449,7 +864,7 @@ class DEModel:
 
         return self._syms[name]
 
-    def sparsesym(self, name: str, force_generate: bool = True) -> List[str]:
+    def sparsesym(self, name: str, force_generate: bool = True) -> list[str]:
         """
         Returns (and constructs if necessary) the sparsified identifiers for
         a sparsified symbolic variable.
@@ -1503,9 +918,7 @@ class DEModel:
             self._generate_sparse_symbol(name)
         return self._sparseeqs[name]
 
-    def colptrs(
-        self, name: str
-    ) -> Union[List[sp.Number], List[List[sp.Number]]]:
+    def colptrs(self, name: str) -> list[sp.Number] | list[list[sp.Number]]:
         """
         Returns (and constructs if necessary) the column pointers for
         a sparsified symbolic variable.
@@ -1522,9 +935,7 @@ class DEModel:
             self._generate_sparse_symbol(name)
         return self._colptrs[name]
 
-    def rowvals(
-        self, name: str
-    ) -> Union[List[sp.Number], List[List[sp.Number]]]:
+    def rowvals(self, name: str) -> list[sp.Number] | list[list[sp.Number]]:
         """
         Returns (and constructs if necessary) the row values for a
         sparsified symbolic variable.
@@ -1541,7 +952,7 @@ class DEModel:
             self._generate_sparse_symbol(name)
         return self._rowvals[name]
 
-    def val(self, name: str) -> List[sp.Number]:
+    def val(self, name: str) -> list[sp.Number]:
         """
         Returns (and constructs if necessary) the numeric values of a
         symbolic entity
@@ -1556,7 +967,7 @@ class DEModel:
             self._generate_value(name)
         return self._vals[name]
 
-    def name(self, name: str) -> List[str]:
+    def name(self, name: str) -> list[str]:
         """
         Returns (and constructs if necessary) the names of a symbolic
         variable
@@ -1571,17 +982,163 @@ class DEModel:
             self._generate_name(name)
         return self._names[name]
 
-    def free_symbols(self) -> Set[sp.Basic]:
+    def free_symbols(self) -> set[sp.Basic]:
         """
         Returns list of free symbols that appear in RHS and initial
         conditions.
         """
         return set(
             chain.from_iterable(
-                state.get_free_symbols()
-                for state in self.states() + self.algebraic_equations()
+                state.get_free_symbols() for state in self.states()
             )
         )
+
+    def static_indices(self, name: str) -> list[int]:
+        """
+        Returns the indices of static expressions in the given model entity.
+
+        Static expressions are those that do not depend on time,
+        neither directly nor indirectly.
+
+        :param name: Name of the model entity.
+        :return: List of indices of static expressions.
+        """
+        # already computed?
+        if (res := self._static_indices.get(name)) is not None:
+            return res
+
+        if name == "w":
+            dwdx = self.sym("dwdx")
+            dwdw = self.sym("dwdw")
+            w = self.eq("w")
+
+            # Check for direct (via `t`) or indirect (via `x`, `h`, or splines)
+            # time dependency.
+            # To avoid lengthy symbolic computations, we only check if we have
+            # any non-zeros in hierarchy. We currently neglect the case where
+            # different hierarchy levels may cancel out. Treating a static
+            # expression as dynamic in such rare cases shouldn't be a problem.
+            dynamic_dependency = np.asarray(
+                dwdx.applyfunc(lambda x: int(not x.is_zero))
+            ).astype(np.int64)
+            # to check for other time-dependence, we add a column to the dwdx
+            #  matrix
+            dynamic_syms = [
+                # FIXME: see spline comment below
+                # *self.sym("spl"),
+                *self.sym("h"),
+                amici_time_symbol,
+            ]
+            dynamic_dependency = np.hstack(
+                (
+                    dynamic_dependency,
+                    np.array(
+                        [
+                            expr.has(*dynamic_syms)
+                            # FIXME: the current spline implementation is a giant pita
+                            #  currently, the splines occur in the form of sympy functions, e.g.:
+                            #   AmiciSpline(y0, time, y0_3, y0_1)
+                            #   AmiciSplineSensitivity(y0, time, y0_1, y0_3, y0_1)
+                            #  until it uses the proper self.sym("spl") / self.sym("sspl")
+                            #  symbols, which will require quite some refactoring,
+                            #  we just do dumb string checks :|
+                            or (
+                                bool(self._splines)
+                                and "AmiciSpline" in str(expr)
+                            )
+                            for expr in w
+                        ]
+                    )[:, np.newaxis],
+                )
+            )
+
+            nonzero_dwdw = np.asarray(
+                dwdw.applyfunc(lambda x: int(not x.is_zero))
+            ).astype(np.int64)
+
+            # `w` is made up an expression hierarchy. Any given entry is only
+            # static if all its dependencies are static. Here, we unravel
+            # the hierarchical structure of `w`.
+            # If for an entry in `w`, the row sum of the intermediate products
+            # is 0 across all levels, the expression is static.
+            tmp = dynamic_dependency
+            res = np.sum(tmp, axis=1)
+            while np.any(tmp != 0):
+                tmp = nonzero_dwdw.dot(tmp)
+                res += np.sum(tmp, axis=1)
+            self._static_indices[name] = (
+                np.argwhere(res == 0).flatten().tolist()
+            )
+
+            return self._static_indices[name]
+
+        if name in ("dwdw", "dwdx", "dwdp"):
+            static_indices_w = set(self.static_indices("w"))
+            dynamic_syms = [
+                *(
+                    sym
+                    for i, sym in enumerate(self.sym("w"))
+                    if i not in static_indices_w
+                ),
+                amici_time_symbol,
+                *self.sym("x"),
+                *self.sym("h"),
+                # FIXME see spline comment above
+                # *(self.sym("spl") if name in ("dwdw", "dwdx") else ()),
+                # *(self.sym("sspl") if name == "dwdp" else ()),
+            ]
+            dynamic_syms = sp.Matrix(dynamic_syms)
+            rowvals = self.rowvals(name)
+            sparseeq = self.sparseeq(name)
+
+            # collect the indices of static expressions of dwd* from the list
+            #  of non-zeros entries of the sparse matrix
+            self._static_indices[name] = [
+                i
+                for i, (expr, row_idx) in enumerate(zip(sparseeq, rowvals))
+                # derivative of a static expression is static
+                if row_idx in static_indices_w
+                # constant expressions
+                or expr.is_Number
+                # check for dependencies on non-static entities
+                or (
+                    # FIXME see spline comment above
+                    #  (check str before diff, as diff will fail on spline functions)
+                    (
+                        # splines: non-static
+                        not self._splines or "AmiciSpline" not in str(expr)
+                    )
+                    and (
+                        # If the expression contains dynamic symbols, it might
+                        # still be static. However, checking the derivative
+                        # is currently too expensive, and we rather accept
+                        # false negatives.
+                        not expr.has(*dynamic_syms)
+                        # or all(
+                        #     expr.diff(dyn_sym).is_zero
+                        #     for dyn_sym in dynamic_syms
+                        # )
+                    )
+                )
+            ]
+            return self._static_indices[name]
+
+        raise NotImplementedError(name)
+
+    def dynamic_indices(self, name: str) -> list[int]:
+        """
+        Return the indices of dynamic expressions in the given model entity.
+
+        :param name: Name of the model entity.
+        :return: List of indices of dynamic expressions.
+        """
+        static_idxs = set(self.static_indices(name))
+        length = len(
+            self.sparsesym(name)
+            if name in sparse_functions
+            else self.sym(name)
+        )
+        return [i for i in range(length) if i not in static_idxs]
 
     def _generate_symbol(self, name: str) -> None:
         """
@@ -1683,7 +1240,7 @@ class DEModel:
             # placeholders for the numeric spline values.
             # Need to create symbols
             self._syms[name] = sp.Matrix(
-                [[f"spl_{isp}" for isp in range(len(self.splines))]]
+                [[f"spl_{isp}" for isp in range(len(self._splines))]]
             )
             return
         elif name == "sspl":
@@ -1691,7 +1248,7 @@ class DEModel:
             self._syms[name] = sp.Matrix(
                 [
                     [f"sspl_{isp}_{ip}" for ip in range(len(self._syms["p"]))]
-                    for isp in range(len(self.splines))
+                    for isp in range(len(self._splines))
                 ]
             )
             return
@@ -1750,7 +1307,17 @@ class DEModel:
             # add roots of heaviside functions
             self.add_component(root)
 
-    def get_appearance_counts(self, idxs: List[int]) -> List[int]:
+        # re-order events - first those that require root tracking, then the others
+        self._events = list(
+            chain(
+                itertools.filterfalse(
+                    Event.triggers_at_fixed_timepoint, self._events
+                ),
+                filter(Event.triggers_at_fixed_timepoint, self._events),
+            )
+        )
+
+    def get_appearance_counts(self, idxs: list[int]) -> list[int]:
         """
         Counts how often a state appears in the time derivative of
         another state and expressions for a subset of states
@@ -1817,7 +1384,7 @@ class DEModel:
                     sparse_list,
                     symbol_list,
                     sparse_matrix,
-                ) = self._code_printer.csc_matrix(
+                ) = csc_matrix(
                     matrix[iy, :],
                     rownames=rownames,
                     colnames=colnames,
@@ -1835,7 +1402,7 @@ class DEModel:
                 sparse_list,
                 symbol_list,
                 sparse_matrix,
-            ) = self._code_printer.csc_matrix(
+            ) = csc_matrix(
                 matrix,
                 rownames=rownames,
                 colnames=colnames,
@@ -2033,7 +1600,7 @@ class DEModel:
         elif name == "spline_values":
             # force symbols
             self._eqs[name] = sp.Matrix(
-                [y for spline in self.splines for y in spline.values_at_nodes]
+                [y for spline in self._splines for y in spline.values_at_nodes]
             )
 
         elif name == "spline_slopes":
@@ -2041,7 +1608,7 @@ class DEModel:
             self._eqs[name] = sp.Matrix(
                 [
                     d
-                    for spline in self.splines
+                    for spline in self._splines
                     for d in (
                         sp.zeros(len(spline.derivatives_at_nodes), 1)
                         if spline.derivatives_by_fd
@@ -2193,6 +1760,18 @@ class DEModel:
             self._eqs[name] = self.sym(name)
 
         elif name == "dwdx":
+            if (
+                expected := list(
+                    map(
+                        ConservationLaw.get_x_rdata,
+                        reversed(self.conservation_laws()),
+                    )
+                )
+            ) != (actual := self.eq("w")[: self.num_cons_law()]):
+                raise AssertionError(
+                    "Conservation laws are not at the beginning of 'w'. "
+                    f"Got {actual}, expected {expected}."
+                )
             x = self.sym("x")
             self._eqs[name] = sp.Matrix(
                 [
@@ -2210,6 +1789,23 @@ class DEModel:
 
         else:
             raise ValueError(f"Unknown equation {name}")
+
+        if name in ("sigmay", "sigmaz"):
+            # check for states in sigma{y,z}, which is currently not supported
+            syms_x = self.sym("x")
+            syms_yz = self.sym(name.removeprefix("sigma"))
+            xs_in_sigma = {}
+            for sym_yz, eq_yz in zip(syms_yz, self._eqs[name]):
+                yz_free_syms = eq_yz.free_symbols
+                if tmp := {x for x in syms_x if x in yz_free_syms}:
+                    xs_in_sigma[sym_yz] = tmp
+            if xs_in_sigma:
+                msg = ", ".join(
+                    [f"{yz} depends on {xs}" for yz, xs in xs_in_sigma.items()]
+                )
+                raise NotImplementedError(
+                    f"State-dependent observables are not supported, but {msg}."
+                )
 
         if name == "root":
             # Events are processed after the model has been set up.
@@ -2237,7 +1833,7 @@ class DEModel:
                     self._eqs[name], self._simplify
                 )
 
-    def sym_names(self) -> List[str]:
+    def sym_names(self) -> list[str]:
         """
         Returns a list of names of generated symbolic variables
 
@@ -2330,7 +1926,7 @@ class DEModel:
         self,
         name: str,
         eq: str,
-        chainvars: List[str],
+        chainvars: list[str],
         var: str,
         dydx_name: str = None,
         dxdz_name: str = None,
@@ -2431,8 +2027,8 @@ class DEModel:
         name: str,
         x: str,
         y: str,
-        transpose_x: Optional[bool] = False,
-        sign: Optional[int] = 1,
+        transpose_x: bool | None = False,
+        sign: int | None = 1,
     ):
         """
         Creates a new symbolic variable according to a multiplication
@@ -2469,7 +2065,7 @@ class DEModel:
         self._eqs[name] = sign * smart_multiply(xx, yy)
 
     def _equation_from_components(
-        self, name: str, components: List[ModelQuantity]
+        self, name: str, components: list[ModelQuantity]
     ) -> None:
         """
         Generates the formulas of a symbolic variable from the attributes
@@ -2482,7 +2078,7 @@ class DEModel:
         """
         self._eqs[name] = sp.Matrix([comp.get_val() for comp in components])
 
-    def get_conservation_laws(self) -> List[Tuple[sp.Symbol, sp.Expr]]:
+    def get_conservation_laws(self) -> list[tuple[sp.Symbol, sp.Expr]]:
         """Returns a list of states with conservation law set
 
         :return:
@@ -2559,7 +2155,7 @@ class DEModel:
         """
         return self.states()[ix].has_conservation_law()
 
-    def get_solver_indices(self) -> Dict[int, int]:
+    def get_solver_indices(self) -> dict[int, int]:
         """
         Returns a mapping that maps rdata species indices to solver indices
 
@@ -2633,8 +2229,8 @@ class DEModel:
     def _get_unique_root(
         self,
         root_found: sp.Expr,
-        roots: List[Event],
-    ) -> Union[sp.Symbol, None]:
+        roots: list[Event],
+    ) -> sp.Symbol | None:
         """
         Collects roots of Heaviside functions and events and stores them in
         the roots list. It checks for redundancy to not store symbolically
@@ -2671,7 +2267,7 @@ class DEModel:
     def _collect_heaviside_roots(
         self,
         args: Sequence[sp.Expr],
-    ) -> List[sp.Expr]:
+    ) -> list[sp.Expr]:
         """
         Recursively checks an expression for the occurrence of Heaviside
         functions and return all roots found
@@ -2689,6 +2285,9 @@ class DEModel:
                 root_funs.append(arg.args[0])
             elif arg.has(sp.Heaviside):
                 root_funs.extend(self._collect_heaviside_roots(arg.args))
+
+        if not root_funs:
+            return []
 
         # substitute 'w' expressions into root expressions now, to avoid
         # rewriting 'root.cpp' and 'stau.cpp' headers
@@ -2708,7 +2307,7 @@ class DEModel:
     def _process_heavisides(
         self,
         dxdt: sp.Expr,
-        roots: List[Event],
+        roots: list[Event],
     ) -> sp.Expr:
         """
         Parses the RHS of a state variable, checks for Heaviside functions,
@@ -2724,16 +2323,12 @@ class DEModel:
         :returns:
             dxdt with Heaviside functions replaced by amici helper variables
         """
-
-        # expanding the rhs will in general help to collect the same
-        # heaviside function
-        dt_expanded = dxdt.expand()
         # track all the old Heaviside expressions in tmp_roots_old
         # replace them later by the new expressions
         heavisides = []
         # run through the expression tree and get the roots
-        tmp_roots_old = self._collect_heaviside_roots(dt_expanded.args)
-        for tmp_old in tmp_roots_old:
+        tmp_roots_old = self._collect_heaviside_roots(dxdt.args)
+        for tmp_old in unique_preserve_order(tmp_roots_old):
             # we want unique identifiers for the roots
             tmp_new = self._get_unique_root(tmp_old, roots)
             # `tmp_new` is None if the root is not time-dependent.
@@ -2791,6 +2386,9 @@ class DEExporter:
         If the given model uses special functions, this set contains hints for
         model building.
 
+    :ivar _code_printer:
+        Code printer to generate C++ code
+
     :ivar generate_sensitivity_code:
         Specifies whether code for sensitivity computation is to be generated
 
@@ -2806,13 +2404,13 @@ class DEExporter:
     def __init__(
         self,
         de_model: DEModel,
-        outdir: Optional[Union[Path, str]] = None,
-        verbose: Optional[Union[bool, int]] = False,
-        assume_pow_positivity: Optional[bool] = False,
-        compiler: Optional[str] = None,
-        allow_reinit_fixpar_initcond: Optional[bool] = True,
-        generate_sensitivity_code: Optional[bool] = True,
-        model_name: Optional[str] = "model",
+        outdir: Path | str | None = None,
+        verbose: bool | int | None = False,
+        assume_pow_positivity: bool | None = False,
+        compiler: str | None = None,
+        allow_reinit_fixpar_initcond: bool | None = True,
+        generate_sensitivity_code: bool | None = True,
+        model_name: str | None = "model",
     ):
         """
         Generate AMICI C++ files for the DE provided to the constructor.
@@ -2857,17 +2455,21 @@ class DEExporter:
         self.set_name(model_name)
         self.set_paths(outdir)
 
+        self._code_printer = AmiciCxxCodePrinter()
+        for fun in CUSTOM_FUNCTIONS:
+            self._code_printer.known_functions[fun["sympy"]] = fun["c++"]
+
         # Signatures and properties of generated model functions (see
         # include/amici/model.h for details)
         self.model: DEModel = de_model
-        self.model._code_printer.known_functions.update(
+        self._code_printer.known_functions.update(
             splines.spline_user_functions(
-                self.model.splines, self._get_index("p")
+                self.model._splines, self._get_index("p")
             )
         )
 
         # To only generate a subset of functions, apply subselection here
-        self.functions: Dict[str, _FunctionInfo] = copy.deepcopy(functions)
+        self.functions: dict[str, _FunctionInfo] = copy.deepcopy(functions)
 
         self.allow_reinit_fixpar_initcond: bool = allow_reinit_fixpar_initcond
         self._build_hints = set()
@@ -2891,7 +2493,12 @@ class DEExporter:
         """
         Compiles the generated code it into a simulatable module
         """
-        self._compile_c_code(compiler=self.compiler, verbose=self.verbose)
+        build_model_extension(
+            package_dir=self.model_path,
+            compiler=self.compiler,
+            verbose=self.verbose,
+            extra_msg="\n".join(self._build_hints),
+        )
 
     def _prepare_model_folder(self) -> None:
         """
@@ -2942,73 +2549,11 @@ class DEExporter:
         self._write_c_make_file()
         self._write_swig_files()
         self._write_module_setup()
+        _write_gitignore(Path(self.model_path))
 
         shutil.copy(
             CXX_MAIN_TEMPLATE_FILE, os.path.join(self.model_path, "main.cpp")
         )
-
-    def _compile_c_code(
-        self,
-        verbose: Optional[Union[bool, int]] = False,
-        compiler: Optional[str] = None,
-    ) -> None:
-        """
-        Compile the generated model code
-
-        :param verbose:
-            Make model compilation verbose
-
-        :param compiler:
-            Absolute path to the compiler executable to be used to build the Python
-            extension, e.g. ``/usr/bin/clang``.
-        """
-        # setup.py assumes it is run from within the model directory
-        module_dir = self.model_path
-        script_args = [sys.executable, os.path.join(module_dir, "setup.py")]
-
-        if verbose:
-            script_args.append("--verbose")
-        else:
-            script_args.append("--quiet")
-
-        script_args.extend(
-            [
-                "build_ext",
-                f"--build-lib={module_dir}",
-                # This is generally not required, but helps to reduce the path
-                # length of intermediate build files, that may easily become
-                # problematic on Windows, due to its ridiculous 255-character path
-                # length limit.
-                f'--build-temp={Path(module_dir, "build")}',
-            ]
-        )
-
-        env = os.environ.copy()
-        if compiler is not None:
-            # CMake will use the compiler specified in the CXX environment variable
-            env["CXX"] = compiler
-
-        # distutils.core.run_setup looks nicer, but does not let us check the
-        # result easily
-        try:
-            result = subprocess.run(
-                script_args,
-                cwd=module_dir,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                check=True,
-                env=env,
-            )
-        except subprocess.CalledProcessError as e:
-            print(e.output.decode("utf-8"))
-            print("Failed building the model extension.")
-            if self._build_hints:
-                print("Note:")
-                print("\n".join(self._build_hints))
-            raise
-
-        if verbose:
-            print(result.stdout.decode("utf-8"))
 
     def _generate_m_code(self) -> None:
         """
@@ -3045,7 +2590,7 @@ class DEExporter:
         with open(compile_script, "w") as fileout:
             fileout.write("\n".join(lines))
 
-    def _get_index(self, name: str) -> Dict[sp.Symbol, int]:
+    def _get_index(self, name: str) -> dict[sp.Symbol, int]:
         """
         Compute indices for a symbolic array.
         :param name:
@@ -3252,7 +2797,7 @@ class DEExporter:
 
     def _generate_function_index(
         self, function: str, indextype: Literal["colptrs", "rowvals"]
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Generate equations and C++ code for the function ``function``.
 
@@ -3354,7 +2899,7 @@ class DEExporter:
 
     def _get_function_body(
         self, function: str, equations: sp.Matrix
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Generate C++ code for body of function ``function``.
 
@@ -3425,7 +2970,7 @@ class DEExporter:
                                 f"reinitialization_state_idxs.cend(), {index}) != "
                                 "reinitialization_state_idxs.cend())",
                                 f"    {function}[{index}] = "
-                                f"{self.model._code_printer.doprint(formula)};",
+                                f"{self._code_printer.doprint(formula)};",
                             ]
                         )
                 cases[ipar] = expressions
@@ -3440,12 +2985,12 @@ class DEExporter:
                     f"reinitialization_state_idxs.cend(), {index}) != "
                     "reinitialization_state_idxs.cend())\n        "
                     f"{function}[{index}] = "
-                    f"{self.model._code_printer.doprint(formula)};"
+                    f"{self._code_printer.doprint(formula)};"
                 )
 
         elif function in event_functions:
             cases = {
-                ie: self.model._code_printer._get_sym_lines_array(
+                ie: self._code_printer._get_sym_lines_array(
                     equations[ie], function, 0
                 )
                 for ie in range(self.model.num_events())
@@ -3458,7 +3003,7 @@ class DEExporter:
             for ie, inner_equations in enumerate(equations):
                 inner_lines = []
                 inner_cases = {
-                    ipar: self.model._code_printer._get_sym_lines_array(
+                    ipar: self._code_printer._get_sym_lines_array(
                         inner_equations[:, ipar], function, 0
                     )
                     for ipar in range(self.model.num_par())
@@ -3473,7 +3018,7 @@ class DEExporter:
             and equations.shape[1] == self.model.num_par()
         ):
             cases = {
-                ipar: self.model._code_printer._get_sym_lines_array(
+                ipar: self._code_printer._get_sym_lines_array(
                     equations[:, ipar], function, 0
                 )
                 for ipar in range(self.model.num_par())
@@ -3483,7 +3028,7 @@ class DEExporter:
         elif function in multiobs_functions:
             if function == "dJydy":
                 cases = {
-                    iobs: self.model._code_printer._get_sym_lines_array(
+                    iobs: self._code_printer._get_sym_lines_array(
                         equations[iobs], function, 0
                     )
                     for iobs in range(self.model.num_obs())
@@ -3491,7 +3036,7 @@ class DEExporter:
                 }
             else:
                 cases = {
-                    iobs: self.model._code_printer._get_sym_lines_array(
+                    iobs: self._code_printer._get_sym_lines_array(
                         equations[:, iobs], function, 0
                     )
                     for iobs in range(equations.shape[1])
@@ -3511,26 +3056,74 @@ class DEExporter:
                 symbols = list(map(sp.Symbol, self.model.sparsesym(function)))
             else:
                 symbols = self.model.sym(function)
-            lines += self.model._code_printer._get_sym_lines_symbols(
-                symbols, equations, function, 4
-            )
+
+            if function in ("w", "dwdw", "dwdx", "dwdp"):
+                # Split into a block of static and dynamic expressions.
+                if len(static_idxs := self.model.static_indices(function)) > 0:
+                    tmp_symbols = sp.Matrix(
+                        [[symbols[i]] for i in static_idxs]
+                    )
+                    tmp_equations = sp.Matrix(
+                        [equations[i] for i in static_idxs]
+                    )
+                    tmp_lines = self._code_printer._get_sym_lines_symbols(
+                        tmp_symbols,
+                        tmp_equations,
+                        function,
+                        8,
+                        static_idxs,
+                    )
+                    if tmp_lines:
+                        lines.extend(
+                            [
+                                "    // static expressions",
+                                "    if (include_static) {",
+                                *tmp_lines,
+                                "    }",
+                            ]
+                        )
+
+                # dynamic expressions
+                if len(dynamic_idxs := self.model.dynamic_indices(function)):
+                    tmp_symbols = sp.Matrix(
+                        [[symbols[i]] for i in dynamic_idxs]
+                    )
+                    tmp_equations = sp.Matrix(
+                        [equations[i] for i in dynamic_idxs]
+                    )
+
+                    tmp_lines = self._code_printer._get_sym_lines_symbols(
+                        tmp_symbols,
+                        tmp_equations,
+                        function,
+                        4,
+                        dynamic_idxs,
+                    )
+                    if tmp_lines:
+                        lines.append("\n    // dynamic expressions")
+                        lines.extend(tmp_lines)
+
+            else:
+                lines += self._code_printer._get_sym_lines_symbols(
+                    symbols, equations, function, 4
+                )
 
         else:
-            lines += self.model._code_printer._get_sym_lines_array(
+            lines += self._code_printer._get_sym_lines_array(
                 equations, function, 4
             )
 
         return [line for line in lines if line]
 
     def _get_create_splines_body(self):
-        if not self.model.splines:
+        if not self.model._splines:
             return ["    return {};"]
 
         ind4 = " " * 4
         ind8 = " " * 8
 
         body = ["return {"]
-        for ispl, spline in enumerate(self.model.splines):
+        for ispl, spline in enumerate(self.model._splines):
             if isinstance(spline.nodes, splines.UniformGrid):
                 nodes = (
                     f"{ind8}{{{spline.nodes.start}, {spline.nodes.stop}}}, "
@@ -3642,8 +3235,9 @@ class DEExporter:
             "NZ": self.model.num_eventobs(),
             "NZTRUE": self.model.num_eventobs(),
             "NEVENT": self.model.num_events(),
+            "NEVENT_SOLVER": self.model.num_events_solver(),
             "NOBJECTIVE": "1",
-            "NSPL": len(self.model.splines),
+            "NSPL": len(self.model._splines),
             "NW": len(self.model.sym("w")),
             "NDWDP": len(
                 self.model.sparsesym(
@@ -3671,10 +3265,10 @@ class DEExporter:
             "NK": self.model.num_const(),
             "O2MODE": "amici::SecondOrderMode::none",
             # using code printer ensures proper handling of nan/inf
-            "PARAMETERS": self.model._code_printer.doprint(
-                self.model.val("p")
-            )[1:-1],
-            "FIXED_PARAMETERS": self.model._code_printer.doprint(
+            "PARAMETERS": self._code_printer.doprint(self.model.val("p"))[
+                1:-1
+            ],
+            "FIXED_PARAMETERS": self._code_printer.doprint(
                 self.model.val("k")
             )[1:-1],
             "PARAMETER_NAMES_INITIALIZER_LIST": self._get_symbol_name_initializer_list(
@@ -3736,12 +3330,11 @@ class DEExporter:
                 )
             ),
             "Z2EVENT": ", ".join(map(str, self.model._z2event)),
+            "STATE_INDEPENDENT_EVENTS": self._get_state_independent_event_intializer(),
             "ID": ", ".join(
-                (
-                    str(float(isinstance(s, DifferentialState)))
-                    for s in self.model.states()
-                    if not s.has_conservation_law()
-                )
+                str(float(isinstance(s, DifferentialState)))
+                for s in self.model.states()
+                if not s.has_conservation_law()
             ),
         }
 
@@ -3867,19 +3460,42 @@ class DEExporter:
             Template initializer list of ids
         """
         return "\n".join(
-            f'"{self.model._code_printer.doprint(symbol)}", // {name}[{idx}]'
+            f'"{self._code_printer.doprint(symbol)}", // {name}[{idx}]'
             for idx, symbol in enumerate(self.model.sym(name))
+        )
+
+    def _get_state_independent_event_intializer(self) -> str:
+        """Get initializer list for state independent events in amici::Model."""
+        map_time_to_event_idx = {}
+        for event_idx, event in enumerate(self.model.events()):
+            if not event.triggers_at_fixed_timepoint():
+                continue
+            trigger_time = float(event.get_trigger_time())
+            try:
+                map_time_to_event_idx[trigger_time].append(event_idx)
+            except KeyError:
+                map_time_to_event_idx[trigger_time] = [event_idx]
+
+        def vector_initializer(v):
+            """std::vector initializer list with elements from `v`"""
+            return f"{{{', '.join(map(str, v))}}}"
+
+        return ", ".join(
+            f"{{{trigger_time}, {vector_initializer(event_idxs)}}}"
+            for trigger_time, event_idxs in map_time_to_event_idx.items()
         )
 
     def _write_c_make_file(self):
         """Write CMake ``CMakeLists.txt`` file for this model."""
         sources = "\n".join(
-            f + " "
-            for f in os.listdir(self.model_path)
-            if f.endswith(
-                (".cpp", ".h"),
+            sorted(
+                f + " "
+                for f in os.listdir(self.model_path)
+                if f.endswith(
+                    (".cpp", ".h"),
+                )
+                and f != "main.cpp"
             )
-            and f != "main.cpp"
         )
 
         template_data = {
@@ -3936,7 +3552,7 @@ class DEExporter:
             template_data,
         )
 
-    def set_paths(self, output_dir: Optional[Union[str, Path]] = None) -> None:
+    def set_paths(self, output_dir: str | Path | None = None) -> None:
         """
         Set output paths for the model and create if necessary
 
@@ -3969,44 +3585,6 @@ class DEExporter:
             )
 
         self.model_name = model_name
-
-
-class TemplateAmici(Template):
-    """
-    Template format used in AMICI (see :class:`string.Template` for more
-    details).
-
-    :cvar delimiter:
-        delimiter that identifies template variables
-    """
-
-    delimiter = "TPL_"
-
-
-def apply_template(
-    source_file: Union[str, Path],
-    target_file: Union[str, Path],
-    template_data: Dict[str, str],
-) -> None:
-    """
-    Load source file, apply template substitution as provided in
-    templateData and save as targetFile.
-
-    :param source_file:
-        relative or absolute path to template file
-
-    :param target_file:
-        relative or absolute path to output file
-
-    :param template_data:
-        template keywords to substitute (key is template
-        variable without :attr:`TemplateAmici.delimiter`)
-    """
-    with open(source_file) as filein:
-        src = TemplateAmici(filein.read())
-    result = src.safe_substitute(template_data)
-    with open(target_file, "w") as fileout:
-        fileout.write(result)
 
 
 def get_function_extern_declaration(fun: str, name: str, ode: bool) -> str:
@@ -4075,7 +3653,7 @@ def get_model_override_implementation(
     body = (
         ""
         if nobody
-        else "\n{ind8}{maybe_return}{fun}_{name}({eval_signature});{ind4}\n".format(
+        else "\n{ind8}{maybe_return}{fun}_{name}({eval_signature});\n{ind4}".format(
             ind4=" " * 4,
             ind8=" " * 8,
             maybe_return="" if func_info.return_type == "void" else "return ",
@@ -4122,7 +3700,9 @@ def get_sunindex_override_implementation(
     if nobody:
         impl += "}}\n"
     else:
-        impl += "{ind8}{fun}_{indextype}_{name}({eval_signature});\n{ind4}}}\n"
+        impl += (
+            "\n{ind8}{fun}_{indextype}_{name}({eval_signature});\n{ind4}}}\n"
+        )
 
     return impl.format(
         ind4=" " * 4,
@@ -4159,6 +3739,7 @@ def remove_argument_types(signature: str) -> str:
         "realtype *",
         "const int ",
         "int ",
+        "bool ",
         "SUNMatrixContent_Sparse ",
         "gsl::span<const int>",
     ]
@@ -4185,89 +3766,15 @@ def is_valid_identifier(x: str) -> bool:
     return IDENTIFIER_PATTERN.match(x) is not None
 
 
-@contextlib.contextmanager
-def _monkeypatched(obj: object, name: str, patch: Any):
+def _write_gitignore(dest_dir: Path) -> None:
+    """Write .gitignore file.
+
+    Generate a `.gitignore` file to ignore a model directory.
+
+    :param dest_dir:
+        Path to the directory to write the `.gitignore` file to.
     """
-    Temporarily monkeypatches an object.
+    dest_dir.mkdir(exist_ok=True, parents=True)
 
-    :param obj:
-        object to be patched
-
-    :param name:
-        name of the attribute to be patched
-
-    :param patch:
-        patched value
-    """
-    pre_patched_value = getattr(obj, name)
-    setattr(obj, name, patch)
-    try:
-        yield object
-    finally:
-        setattr(obj, name, pre_patched_value)
-
-
-def _custom_pow_eval_derivative(self, s):
-    """
-    Custom Pow derivative that removes a removable singularity for
-    ``self.base == 0`` and ``self.base.diff(s) == 0``. This function is
-    intended to be monkeypatched into :py:method:`sympy.Pow._eval_derivative`.
-
-    :param self:
-        sp.Pow class
-
-    :param s:
-        variable with respect to which the derivative will be computed
-    """
-    dbase = self.base.diff(s)
-    dexp = self.exp.diff(s)
-    part1 = sp.Pow(self.base, self.exp - 1) * self.exp * dbase
-    part2 = self * dexp * sp.log(self.base)
-    if self.base.is_nonzero or dbase.is_nonzero or part2.is_zero:
-        # first piece never applies or is zero anyways
-        return part1 + part2
-
-    return part1 + sp.Piecewise(
-        (self.base, sp.And(sp.Eq(self.base, 0), sp.Eq(dbase, 0))),
-        (part2, True),
-    )
-
-
-def _jacobian_element(i, j, eq_i, sym_var_j):
-    """Compute a single element of a jacobian"""
-    return (i, j), eq_i.diff(sym_var_j)
-
-
-def _parallel_applyfunc(obj: sp.Matrix, func: Callable) -> sp.Matrix:
-    """Parallel implementation of sympy's Matrix.applyfunc"""
-    if (n_procs := int(os.environ.get("AMICI_IMPORT_NPROCS", 1))) == 1:
-        # serial
-        return obj.applyfunc(func)
-
-    # parallel
-    from multiprocessing import get_context
-    from pickle import PicklingError
-
-    from sympy.matrices.dense import DenseMatrix
-
-    # "spawn" should avoid potential deadlocks occurring with fork
-    #  see e.g. https://stackoverflow.com/a/66113051
-    ctx = get_context("spawn")
-    with ctx.Pool(n_procs) as p:
-        try:
-            if isinstance(obj, DenseMatrix):
-                return obj._new(obj.rows, obj.cols, p.map(func, obj))
-            elif isinstance(obj, sp.SparseMatrix):
-                dok = obj.todok()
-                mapped = p.map(func, dok.values())
-                dok = {k: v for k, v in zip(dok.keys(), mapped) if v != 0}
-                return obj._new(obj.rows, obj.cols, dok)
-            else:
-                raise ValueError(f"Unsupported matrix type {type(obj)}")
-        except PicklingError as e:
-            raise ValueError(
-                f"Couldn't pickle {func}. This is likely because the argument "
-                "was not a module-level function. Either rewrite the argument "
-                "to a module-level function or disable parallelization by "
-                "setting `AMICI_IMPORT_NPROCS=1`."
-            ) from e
+    with open(dest_dir / ".gitignore", "w") as f:
+        f.write("**")

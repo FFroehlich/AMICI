@@ -50,9 +50,15 @@ def get_extensions():
         source_dir="amici/ThirdParty/SuiteSparse/SuiteSparse_config",
         cmake_configure_options=[
             *global_cmake_configure_options,
-            "-DBLA_VENDOR=All",
-            "-DENABLE_CUDA=FALSE",
-            "-DNFORTRAN=TRUE",
+            "-DCMAKE_POSITION_INDEPENDENT_CODE=ON",
+            # Building SuiteSparse_config does not require a BLAS
+            #  we just set BLAS_LIBRARIES to skip the search,
+            #  the value is not used
+            # "-DBLA_VENDOR=All",
+            "-DBLAS_LIBRARIES=dummy",
+            "-DSUITESPARSE_USE_64BIT_BLAS=ON",
+            "-DSUITESPARSE_USE_CUDA=OFF",
+            "-DSUITESPARSE_USE_FORTRAN=OFF",
         ],
     )
     # SuiteSparse AMD
@@ -62,7 +68,7 @@ def get_extensions():
         source_dir="amici/ThirdParty/SuiteSparse/AMD",
         cmake_configure_options=[
             *global_cmake_configure_options,
-            "-DNFORTRAN=TRUE",
+            "-DSUITESPARSE_USE_FORTRAN=OFF",
         ],
     )
     # SuiteSparse BTF
@@ -72,7 +78,7 @@ def get_extensions():
         source_dir="amici/ThirdParty/SuiteSparse/BTF",
         cmake_configure_options=[
             *global_cmake_configure_options,
-            "-DNFORTRAN=TRUE",
+            "-DSUITESPARSE_USE_FORTRAN=OFF",
         ],
     )
     # SuiteSparse COLAMD
@@ -82,7 +88,7 @@ def get_extensions():
         source_dir="amici/ThirdParty/SuiteSparse/COLAMD",
         cmake_configure_options=[
             *global_cmake_configure_options,
-            "-DNFORTRAN=TRUE",
+            "-DSUITESPARSE_USE_FORTRAN=OFF",
         ],
     )
     # SuiteSparse KLU
@@ -92,9 +98,9 @@ def get_extensions():
         source_dir="amici/ThirdParty/SuiteSparse/KLU",
         cmake_configure_options=[
             *global_cmake_configure_options,
-            "-DNCHOLMOD=ON",
-            "-DENABLE_CUDA=FALSE",
-            "-DNFORTRAN=TRUE",
+            "-DKLU_USE_CHOLMOD=OFF",
+            "-DSUITESPARSE_USE_CUDA=OFF",
+            "-DSUITESPARSE_USE_FORTRAN=OFF",
         ],
     )
     # SUNDIALS
@@ -120,7 +126,7 @@ def get_extensions():
             #  be replaced by the actual path by `AmiciBuildCMakeExtension`
             #  before being passed to CMake.
             "-DKLU_LIBRARY_DIR='${build_dir}/amici/lib'",
-            "-DKLU_INCLUDE_DIR='${build_dir}/amici/include'",
+            "-DKLU_INCLUDE_DIR='${build_dir}/amici/include/suitesparse'",
         ],
     )
     # AMICI
@@ -146,7 +152,6 @@ def main():
     # (https://pypi.org/project/amici/)
     with open(
         os.path.join(os.path.dirname(__file__), "README.md"),
-        "r",
         encoding="utf-8",
     ) as fh:
         long_description = fh.read()

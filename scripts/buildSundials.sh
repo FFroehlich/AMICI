@@ -48,7 +48,7 @@ ${cmake} -DCMAKE_INSTALL_PREFIX="${sundials_build_path}" \
   -DEXAMPLES_INSTALL=OFF \
   -DENABLE_KLU=ON \
   -DKLU_LIBRARY_DIR="${suitesparse_root}/lib" \
-  -DKLU_INCLUDE_DIR="${suitesparse_root}/include" \
+  -DKLU_INCLUDE_DIR="${suitesparse_root}/include/suitesparse" \
   ${SuperLUMT} \
   ..
 

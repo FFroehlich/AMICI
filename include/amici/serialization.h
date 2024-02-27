@@ -6,10 +6,7 @@
 #include "amici/solver.h"
 #include "amici/solver_cvodes.h"
 
-#include <cassert>
 #include <chrono>
-#include <fstream>
-#include <iostream>
 
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
@@ -18,6 +15,7 @@
 #include <boost/iostreams/device/back_inserter.hpp>
 #include <boost/iostreams/stream.hpp>
 #include <boost/serialization/array.hpp>
+#include <boost/serialization/map.hpp>
 #include <boost/serialization/vector.hpp>
 
 /** @file serialization.h Helper functions and forward declarations for
@@ -35,12 +33,12 @@ template <class Archive, typename T>
 void archiveVector(Archive& ar, T** p, int size) {
     if (Archive::is_loading::value) {
         if (*p != nullptr)
-            delete[] * p;
-        ar& size;
+            delete[] *p;
+        ar & size;
         *p = size ? new T[size] : nullptr;
     } else {
         size = *p == nullptr ? 0 : size;
-        ar& size;
+        ar & size;
     }
     ar& make_array<T>(*p, size);
 }
@@ -53,40 +51,40 @@ void archiveVector(Archive& ar, T** p, int size) {
  */
 template <class Archive>
 void serialize(Archive& ar, amici::Solver& s, unsigned int const /*version*/) {
-    ar& s.sensi_;
-    ar& s.atol_;
-    ar& s.rtol_;
-    ar& s.atolB_;
-    ar& s.rtolB_;
-    ar& s.atol_fsa_;
-    ar& s.rtol_fsa_;
-    ar& s.quad_atol_;
-    ar& s.quad_rtol_;
-    ar& s.ss_tol_factor_;
-    ar& s.ss_atol_;
-    ar& s.ss_rtol_;
-    ar& s.ss_tol_sensi_factor_;
-    ar& s.ss_atol_sensi_;
-    ar& s.ss_rtol_sensi_;
-    ar& s.maxsteps_;
-    ar& s.maxstepsB_;
-    ar& s.newton_maxsteps_;
-    ar& s.newton_damping_factor_mode_;
-    ar& s.newton_damping_factor_lower_bound_;
-    ar& s.ism_;
-    ar& s.sensi_meth_;
-    ar& s.linsol_;
-    ar& s.interp_type_;
-    ar& s.lmm_;
-    ar& s.iter_;
-    ar& s.stldet_;
-    ar& s.ordering_;
-    ar& s.cpu_time_;
-    ar& s.cpu_timeB_;
-    ar& s.newton_step_steadystate_conv_;
-    ar& s.check_sensi_steadystate_conv_;
-    ar& s.rdata_mode_;
-    ar& s.maxtime_;
+    ar & s.sensi_;
+    ar & s.atol_;
+    ar & s.rtol_;
+    ar & s.atolB_;
+    ar & s.rtolB_;
+    ar & s.atol_fsa_;
+    ar & s.rtol_fsa_;
+    ar & s.quad_atol_;
+    ar & s.quad_rtol_;
+    ar & s.ss_tol_factor_;
+    ar & s.ss_atol_;
+    ar & s.ss_rtol_;
+    ar & s.ss_tol_sensi_factor_;
+    ar & s.ss_atol_sensi_;
+    ar & s.ss_rtol_sensi_;
+    ar & s.maxsteps_;
+    ar & s.maxstepsB_;
+    ar & s.newton_maxsteps_;
+    ar & s.newton_damping_factor_mode_;
+    ar & s.newton_damping_factor_lower_bound_;
+    ar & s.ism_;
+    ar & s.sensi_meth_;
+    ar & s.linsol_;
+    ar & s.interp_type_;
+    ar & s.lmm_;
+    ar & s.iter_;
+    ar & s.stldet_;
+    ar & s.ordering_;
+    ar & s.cpu_time_;
+    ar & s.cpu_timeB_;
+    ar & s.newton_step_steadystate_conv_;
+    ar & s.check_sensi_steadystate_conv_;
+    ar & s.rdata_mode_;
+    ar & s.maxtime_;
 }
 
 /**
@@ -101,11 +99,11 @@ void serialize(
 ) {
     Period tmp_period;
     if (Archive::is_loading::value) {
-        ar& tmp_period;
+        ar & tmp_period;
         d = std::chrono::duration<Period, Rep>(tmp_period);
     } else {
         tmp_period = d.count();
-        ar& tmp_period;
+        ar & tmp_period;
     }
 }
 
@@ -129,23 +127,24 @@ void serialize(
 template <class Archive>
 void serialize(Archive& ar, amici::Model& m, unsigned int const /*version*/) {
     ar& dynamic_cast<amici::ModelDimensions&>(m);
-    ar& m.simulation_parameters_;
-    ar& m.o2mode;
-    ar& m.z2event_;
-    ar& m.idlist;
-    ar& m.state_.h;
-    ar& m.state_.unscaledParameters;
-    ar& m.state_.fixedParameters;
-    ar& m.state_.plist;
-    ar& m.x0data_;
-    ar& m.sx0data_;
-    ar& m.nmaxevent_;
-    ar& m.state_is_non_negative_;
-    ar& m.pythonGenerated;
-    ar& m.min_sigma_;
-    ar& m.sigma_res_;
-    ar& m.steadystate_computation_mode_;
-    ar& m.steadystate_sensitivity_mode_;
+    ar & m.simulation_parameters_;
+    ar & m.o2mode;
+    ar & m.z2event_;
+    ar & m.idlist;
+    ar & m.state_.h;
+    ar & m.state_.unscaledParameters;
+    ar & m.state_.fixedParameters;
+    ar & m.state_.plist;
+    ar & m.x0data_;
+    ar & m.sx0data_;
+    ar & m.nmaxevent_;
+    ar & m.state_is_non_negative_;
+    ar & m.pythonGenerated;
+    ar & m.min_sigma_;
+    ar & m.sigma_res_;
+    ar & m.steadystate_computation_mode_;
+    ar & m.steadystate_sensitivity_mode_;
+    ar & m.state_independent_events_;
 }
 
 /**
@@ -157,18 +156,18 @@ template <class Archive>
 void serialize(
     Archive& ar, amici::SimulationParameters& s, unsigned int const /*version*/
 ) {
-    ar& s.fixedParameters;
-    ar& s.fixedParametersPreequilibration;
-    ar& s.fixedParametersPresimulation;
-    ar& s.parameters;
-    ar& s.x0;
-    ar& s.sx0;
-    ar& s.pscale;
-    ar& s.plist;
-    ar& s.ts_;
-    ar& s.tstart_;
-    ar& s.t_presim;
-    ar& s.reinitializeFixedParameterInitialStates;
+    ar & s.fixedParameters;
+    ar & s.fixedParametersPreequilibration;
+    ar & s.fixedParametersPresimulation;
+    ar & s.parameters;
+    ar & s.x0;
+    ar & s.sx0;
+    ar & s.pscale;
+    ar & s.plist;
+    ar & s.ts_;
+    ar & s.tstart_;
+    ar & s.t_presim;
+    ar & s.reinitializeFixedParameterInitialStates;
 }
 
 /**
@@ -182,63 +181,63 @@ void serialize(
     Archive& ar, amici::ReturnData& r, unsigned int const /*version*/
 ) {
     ar& dynamic_cast<amici::ModelDimensions&>(r);
-    ar& r.id;
-    ar& r.nx;
-    ar& r.nxtrue;
-    ar& r.nplist;
-    ar& r.nmaxevent;
-    ar& r.nt;
-    ar& r.newton_maxsteps;
-    ar& r.pscale;
-    ar& r.o2mode;
-    ar& r.sensi;
-    ar& r.sensi_meth;
+    ar & r.id;
+    ar & r.nx;
+    ar & r.nxtrue;
+    ar & r.nplist;
+    ar & r.nmaxevent;
+    ar & r.nt;
+    ar & r.newton_maxsteps;
+    ar & r.pscale;
+    ar & r.o2mode;
+    ar & r.sensi;
+    ar & r.sensi_meth;
 
-    ar& r.ts;
-    ar& r.xdot;
-    ar& r.J;
-    ar& r.w;
-    ar& r.z& r.sigmaz;
-    ar& r.sz& r.ssigmaz;
-    ar& r.rz;
-    ar& r.srz;
-    ar& r.s2rz;
-    ar& r.x;
-    ar& r.sx;
-    ar& r.y& r.sigmay;
-    ar& r.sy& r.ssigmay;
+    ar & r.ts;
+    ar & r.xdot;
+    ar & r.J;
+    ar & r.w;
+    ar & r.z & r.sigmaz;
+    ar & r.sz & r.ssigmaz;
+    ar & r.rz;
+    ar & r.srz;
+    ar & r.s2rz;
+    ar & r.x;
+    ar & r.sx;
+    ar & r.y & r.sigmay;
+    ar & r.sy & r.ssigmay;
 
-    ar& r.numsteps;
-    ar& r.numstepsB;
-    ar& r.numrhsevals;
-    ar& r.numrhsevalsB;
-    ar& r.numerrtestfails;
-    ar& r.numerrtestfailsB;
-    ar& r.numnonlinsolvconvfails;
-    ar& r.numnonlinsolvconvfailsB;
-    ar& r.order;
-    ar& r.cpu_time;
-    ar& r.cpu_timeB;
-    ar& r.cpu_time_total;
-    ar& r.preeq_cpu_time;
-    ar& r.preeq_cpu_timeB;
-    ar& r.preeq_status;
-    ar& r.preeq_numsteps;
-    ar& r.preeq_wrms;
-    ar& r.preeq_t;
-    ar& r.posteq_cpu_time;
-    ar& r.posteq_cpu_timeB;
-    ar& r.posteq_status;
-    ar& r.posteq_numsteps;
-    ar& r.posteq_wrms;
-    ar& r.posteq_t;
-    ar& r.x0;
-    ar& r.sx0;
-    ar& r.llh;
-    ar& r.chi2;
-    ar& r.sllh;
-    ar& r.s2llh;
-    ar& r.status;
+    ar & r.numsteps;
+    ar & r.numstepsB;
+    ar & r.numrhsevals;
+    ar & r.numrhsevalsB;
+    ar & r.numerrtestfails;
+    ar & r.numerrtestfailsB;
+    ar & r.numnonlinsolvconvfails;
+    ar & r.numnonlinsolvconvfailsB;
+    ar & r.order;
+    ar & r.cpu_time;
+    ar & r.cpu_timeB;
+    ar & r.cpu_time_total;
+    ar & r.preeq_cpu_time;
+    ar & r.preeq_cpu_timeB;
+    ar & r.preeq_status;
+    ar & r.preeq_numsteps;
+    ar & r.preeq_wrms;
+    ar & r.preeq_t;
+    ar & r.posteq_cpu_time;
+    ar & r.posteq_cpu_timeB;
+    ar & r.posteq_status;
+    ar & r.posteq_numsteps;
+    ar & r.posteq_wrms;
+    ar & r.posteq_t;
+    ar & r.x0;
+    ar & r.sx0;
+    ar & r.llh;
+    ar & r.chi2;
+    ar & r.sllh;
+    ar & r.s2llh;
+    ar & r.status;
 }
 
 /**
@@ -251,29 +250,30 @@ template <class Archive>
 void serialize(
     Archive& ar, amici::ModelDimensions& m, unsigned int const /*version*/
 ) {
-    ar& m.nx_rdata;
-    ar& m.nxtrue_rdata;
-    ar& m.nx_solver;
-    ar& m.nxtrue_solver;
-    ar& m.nx_solver_reinit;
-    ar& m.np;
-    ar& m.nk;
-    ar& m.ny;
-    ar& m.nytrue;
-    ar& m.nz;
-    ar& m.nztrue;
-    ar& m.ne;
-    ar& m.nspl;
-    ar& m.nw;
-    ar& m.ndwdx;
-    ar& m.ndwdp;
-    ar& m.ndwdw;
-    ar& m.ndxdotdw;
-    ar& m.ndJydy;
-    ar& m.nnz;
-    ar& m.nJ;
-    ar& m.ubw;
-    ar& m.lbw;
+    ar & m.nx_rdata;
+    ar & m.nxtrue_rdata;
+    ar & m.nx_solver;
+    ar & m.nxtrue_solver;
+    ar & m.nx_solver_reinit;
+    ar & m.np;
+    ar & m.nk;
+    ar & m.ny;
+    ar & m.nytrue;
+    ar & m.nz;
+    ar & m.nztrue;
+    ar & m.ne;
+    ar & m.ne_solver;
+    ar & m.nspl;
+    ar & m.nw;
+    ar & m.ndwdx;
+    ar & m.ndwdp;
+    ar & m.ndwdw;
+    ar & m.ndxdotdw;
+    ar & m.ndJydy;
+    ar & m.nnz;
+    ar & m.nJ;
+    ar & m.ubw;
+    ar & m.lbw;
 }
 #endif
 } // namespace serialization

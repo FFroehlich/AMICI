@@ -62,29 +62,35 @@ class AmiException : public std::exception {
 };
 
 /**
- * @brief cvode exception handler class
+ * @brief CVODE exception handler class
  */
 class CvodeException : public AmiException {
   public:
     /**
      * @brief Constructor
-     * @param error_code error code returned by cvode function
-     * @param function cvode function name
+     * @param error_code error code returned by CVODE function
+     * @param function CVODE function name
+     * @param extra Extra text to append to error message
      */
-    CvodeException(int error_code, char const* function);
+    CvodeException(
+        int error_code, char const* function, char const* extra = nullptr
+    );
 };
 
 /**
- * @brief ida exception handler class
+ * @brief IDA exception handler class
  */
 class IDAException : public AmiException {
   public:
     /**
      * @brief Constructor
-     * @param error_code error code returned by ida function
-     * @param function ida function name
+     * @param error_code error code returned by IDA function
+     * @param function IDA function name
+     * @param extra Extra text to append to error message
      */
-    IDAException(int error_code, char const* function);
+    IDAException(
+        int error_code, char const* function, char const* extra = nullptr
+    );
 };
 
 /**

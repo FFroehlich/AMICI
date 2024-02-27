@@ -9,7 +9,6 @@
 #include <algorithm>
 #include <ctime>
 #include <functional>
-#include <memory>
 #include <regex>
 #include <vector>
 
@@ -86,7 +85,7 @@ void checkBufferSize(
  * @param buffer buffer to which values are to be written
  */
 template <class T>
-void writeSlice(const gsl::span<T const> slice, gsl::span<T> buffer) {
+void writeSlice(gsl::span<T const> const slice, gsl::span<T> buffer) {
     checkBufferSize(buffer, slice.size());
     std::copy(slice.begin(), slice.end(), buffer.data());
 };
@@ -98,7 +97,7 @@ void writeSlice(const gsl::span<T const> slice, gsl::span<T> buffer) {
  * @param buffer buffer to which values are to be added
  */
 template <class T>
-void addSlice(const gsl::span<T const> slice, gsl::span<T> buffer) {
+void addSlice(gsl::span<T const> const slice, gsl::span<T> buffer) {
     checkBufferSize(buffer, slice.size());
     std::transform(
         slice.begin(), slice.end(), buffer.begin(), buffer.begin(),
@@ -291,7 +290,11 @@ class CpuTimer {
         return d_milliseconds(clock::now() - start_).count();
     }
 
-    static const bool uses_thread_clock = true;
+    /**
+     * @brief Whether the timer uses a thread clock (i.e. provides proper,
+     * thread-specific CPU time).
+     */
+    static bool const uses_thread_clock = true;
 
   private:
     /** Start time */
@@ -330,7 +333,11 @@ class CpuTimer {
                / CLOCKS_PER_SEC;
     }
 
-    static const bool uses_thread_clock = false;
+    /**
+     * @brief Whether the timer uses a thread clock (i.e. provides proper,
+     * thread-specific CPU time).
+     */
+    static bool const uses_thread_clock = false;
 
   private:
     /** Start time */

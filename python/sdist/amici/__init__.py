@@ -6,7 +6,6 @@ The AMICI Python module provides functionality for importing SBML or PySB
 models and turning them into C++ Python extensions.
 """
 
-
 import contextlib
 import importlib
 import os
@@ -14,7 +13,7 @@ import re
 import sys
 from pathlib import Path
 from types import ModuleType as ModelModule
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Union
 
 
 def _get_amici_path():
@@ -108,18 +107,21 @@ if not _imported_from_setup():
         #  from .swig_wrappers
         hdf5_enabled = "readSolverSettingsFromHDF5" in dir()
         # These modules require the swig interface and other dependencies
-        from .numpy import ExpDataView, ReturnDataView
+        from .numpy import ExpDataView, ReturnDataView  # noqa: F401
         from .pandas import *
         from .swig_wrappers import *
 
     # These modules don't require the swig interface
     from typing import Protocol, runtime_checkable
 
-    from .de_export import DEExporter, DEModel
-    from .sbml_import import SbmlImporter, assignmentRules2observables
+    from .de_export import DEExporter, DEModel  # noqa: F401
+    from .sbml_import import (  # noqa: F401
+        SbmlImporter,
+        assignmentRules2observables,
+    )
 
     @runtime_checkable
-    class ModelModule(Protocol):
+    class ModelModule(Protocol):  # noqa: F811
         """Type of AMICI-generated model modules.
 
         To enable static type checking."""
@@ -131,6 +133,8 @@ if not _imported_from_setup():
         def get_model(self) -> amici.Model:
             """Create a model instance."""
             ...
+
+    AmiciModel = Union[amici.Model, amici.ModelPtr]
 
 
 class add_path:
@@ -149,7 +153,7 @@ class add_path:
 
 
 def import_model_module(
-    module_name: str, module_path: Optional[Union[Path, str]] = None
+    module_name: str, module_path: Union[Path, str]
 ) -> ModelModule:
     """
     Import Python module of an AMICI model

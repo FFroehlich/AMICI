@@ -2,9 +2,9 @@
 #include "amici/amici.h"
 #include "amici/defines.h"
 #include "amici/exception.h"
-#include "amici/vector.h"
 
 #include <algorithm> // std::min
+#include <cassert>
 #include <cmath>
 #include <vector>
 
@@ -54,18 +54,18 @@ AbstractSpline::AbstractSpline(
     }
 }
 
-realtype AbstractSpline::get_value(const realtype t) const {
+realtype AbstractSpline::get_value(realtype const t) const {
     auto y = get_value_scaled(t);
     return logarithmic_parametrization_ ? std::exp(y) : y;
 }
 
-realtype AbstractSpline::get_sensitivity(const realtype t, int const ip) const {
+realtype AbstractSpline::get_sensitivity(realtype const t, int const ip) const {
     auto s = get_sensitivity_scaled(t, ip);
     return logarithmic_parametrization_ ? s * get_value(t) : s;
 }
 
 realtype AbstractSpline::get_sensitivity(
-    const realtype t, int const ip, const realtype value
+    realtype const t, int const ip, realtype const value
 ) const {
     auto s = get_sensitivity_scaled(t, ip);
     return logarithmic_parametrization_ ? s * value : s;
@@ -387,12 +387,12 @@ void HermiteSpline::compute_coefficients_extrapolation() {
 #ifdef DVALUESDP
 #error "Preprocessor macro DVALUESDP already defined?!"
 #else
-#define DVALUESDP(i_node) dvaluesdp[node_offset + (i_node)*nplist]
+#define DVALUESDP(i_node) dvaluesdp[node_offset + (i_node) * nplist]
 #endif
 #ifdef DSLOPESDP
 #error "Preprocessor macro DSLOPESDP already defined?!"
 #else
-#define DSLOPESDP(i_node) dslopesdp[node_offset + (i_node)*nplist]
+#define DSLOPESDP(i_node) dslopesdp[node_offset + (i_node) * nplist]
 #endif
 
 void HermiteSpline::compute_coefficients_sensi(
@@ -821,7 +821,7 @@ void HermiteSpline::compute_final_sensitivity(
     set_final_sensitivity_scaled(finalSensitivity);
 }
 
-realtype HermiteSpline::get_value_scaled(const realtype t) const {
+realtype HermiteSpline::get_value_scaled(realtype const t) const {
     /* Is this a steady state computation? */
     if (std::isinf(t))
         return get_final_value_scaled();
@@ -922,7 +922,7 @@ realtype HermiteSpline::get_value_scaled(const realtype t) const {
 }
 
 realtype
-HermiteSpline::get_sensitivity_scaled(const realtype t, int const ip) const {
+HermiteSpline::get_sensitivity_scaled(realtype const t, int const ip) const {
     /* Is this a steady state computation? */
     if (std::isinf(t))
         return get_final_sensitivity_scaled(ip);

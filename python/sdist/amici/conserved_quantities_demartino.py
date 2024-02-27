@@ -2,7 +2,8 @@ import logging
 import math
 import random
 import sys
-from typing import List, MutableSequence, Optional, Sequence, Tuple, Union
+from typing import Optional, Union
+from collections.abc import MutableSequence, Sequence
 
 from .logging import get_logger
 
@@ -22,7 +23,7 @@ def compute_moiety_conservation_laws(
     max_num_monte_carlo: int = 20,
     rng_seed: Union[None, bool, int] = False,
     species_names: Optional[Sequence[str]] = None,
-) -> Tuple[List[List[int]], List[List[float]]]:
+) -> tuple[list[list[int]], list[list[float]]]:
     """Compute moiety conservation laws.
 
     According to the algorithm proposed by De Martino et al. (2014)
@@ -112,9 +113,9 @@ def compute_moiety_conservation_laws(
 def _output(
     int_kernel_dim: int,
     kernel_dim: int,
-    int_matched: List[int],
-    species_indices: List[List[int]],
-    species_coefficients: List[List[float]],
+    int_matched: list[int],
+    species_indices: list[list[int]],
+    species_coefficients: list[list[float]],
     species_names: Optional[Sequence[str]] = None,
     verbose: bool = False,
     log_level: int = logging.DEBUG,
@@ -203,7 +204,7 @@ def _qsort(
 
 def _kernel(
     stoichiometric_list: Sequence[float], num_species: int, num_reactions: int
-) -> Tuple[int, List[int], int, List[int], List[List[int]], List[List[float]]]:
+) -> tuple[int, list[int], int, list[int], list[list[int]], list[list[float]]]:
     """
     Kernel (left nullspace of :math:`S`) calculation by Gaussian elimination
 
@@ -227,8 +228,8 @@ def _kernel(
         kernel dimension, MCLs, integer kernel dimension, integer MCLs and
         indices to species and reactions in the preceding order as a tuple
     """
-    matrix: List[List[int]] = [[] for _ in range(num_species)]
-    matrix2: List[List[float]] = [[] for _ in range(num_species)]
+    matrix: list[list[int]] = [[] for _ in range(num_species)]
+    matrix2: list[list[float]] = [[] for _ in range(num_species)]
     i_reaction = 0
     i_species = 0
     for val in stoichiometric_list:
@@ -243,7 +244,7 @@ def _kernel(
         matrix[i].append(num_reactions + i)
         matrix2[i].append(1)
 
-    order: List[int] = list(range(num_species))
+    order: list[int] = list(range(num_species))
     pivots = [
         matrix[i][0] if len(matrix[i]) else _MAX for i in range(num_species)
     ]
@@ -283,7 +284,7 @@ def _kernel(
             if pivots[order[j + 1]] == pivots[order[j]] != _MAX:
                 k1 = order[j + 1]
                 k2 = order[j]
-                column: List[float] = [0] * (num_species + num_reactions)
+                column: list[float] = [0] * (num_species + num_reactions)
                 g = matrix2[k2][0] / matrix2[k1][0]
                 for i in range(1, len(matrix[k1])):
                     column[matrix[k1][i]] = matrix2[k1][i] * g
@@ -369,7 +370,7 @@ def _fill(
     stoichiometric_list: Sequence[float],
     matched: Sequence[int],
     num_species: int,
-) -> Tuple[List[List[int]], List[List[int]], List[int]]:
+) -> tuple[list[list[int]], list[list[int]], list[int]]:
     """Construct interaction matrix
 
     Construct the interaction matrix out of the given stoichiometric matrix
@@ -454,8 +455,8 @@ def _is_linearly_dependent(
         boolean indicating linear dependence (true) or not (false)
     """
     K = int_kernel_dim + 1
-    matrix: List[List[int]] = [[] for _ in range(K)]
-    matrix2: List[List[float]] = [[] for _ in range(K)]
+    matrix: list[list[int]] = [[] for _ in range(K)]
+    matrix2: list[list[float]] = [[] for _ in range(K)]
     # Populate matrices with species ids and coefficients for CLs
     for i in range(K - 1):
         for j in range(len(cls_species_idxs[i])):
@@ -508,7 +509,7 @@ def _is_linearly_dependent(
             if pivots[order[j + 1]] == pivots[order[j]] != _MAX:
                 k1 = order[j + 1]
                 k2 = order[j]
-                column: List[float] = [0] * num_species
+                column: list[float] = [0] * num_species
                 g = matrix2[k2][0] / matrix2[k1][0]
                 for i in range(1, len(matrix[k1])):
                     column[matrix[k1][i]] = matrix2[k1][i] * g
@@ -540,7 +541,7 @@ def _monte_carlo(
     initial_temperature: float = 1,
     cool_rate: float = 1e-3,
     max_iter: int = 10,
-) -> Tuple[bool, int, Sequence[int]]:
+) -> tuple[bool, int, Sequence[int]]:
     """MonteCarlo simulated annealing for finding integer MCLs
 
     Finding integer solutions for the MCLs by Monte Carlo, see step (b) in
@@ -712,8 +713,8 @@ def _relax(
         (``False``)
     """
     K = len(int_matched)
-    matrix: List[List[int]] = [[] for _ in range(K)]
-    matrix2: List[List[float]] = [[] for _ in range(K)]
+    matrix: list[list[int]] = [[] for _ in range(K)]
+    matrix2: list[list[float]] = [[] for _ in range(K)]
     i_reaction = 0
     i_species = 0
     for val in stoichiometric_list:
@@ -767,7 +768,7 @@ def _relax(
             if pivots[order[j + 1]] == pivots[order[j]] != _MAX:
                 k1 = order[j + 1]
                 k2 = order[j]
-                column: List[float] = [0] * num_reactions
+                column: list[float] = [0] * num_reactions
                 g = matrix2[k2][0] / matrix2[k1][0]
                 for i in range(1, len(matrix[k1])):
                     column[matrix[k1][i]] = matrix2[k1][i] * g
@@ -807,7 +808,7 @@ def _relax(
 
                 # subtract rows
                 # matrix2[k] = matrix2[k] - matrix2[j] * matrix2[k][i]
-                row_k: List[float] = [0] * num_reactions
+                row_k: list[float] = [0] * num_reactions
                 for a in range(len(matrix[k])):
                     row_k[matrix[k][a]] = matrix2[k][a]
                 for a in range(len(matrix[j])):
@@ -955,7 +956,7 @@ def _reduce(
             k1 = order[i]
             for j in range(i + 1, K):
                 k2 = order[j]
-                column: List[float] = [0] * num_species
+                column: list[float] = [0] * num_species
                 for species_idx, coefficient in zip(
                     cls_species_idxs[k1], cls_coefficients[k1]
                 ):

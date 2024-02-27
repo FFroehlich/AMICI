@@ -76,17 +76,28 @@
    Memcheck:Leak
    fun:malloc
    ...
-   fun:__pyx_pw_5numpy_6random_13bit_generator_12BitGenerator_1__init__
+   fun:__pyx_pw_5numpy_*
 }
 
 {
    numpy
    Memcheck:Leak
-   match-leak-kinds: definite
+   match-leak-kinds: possible
    fun:malloc
-   obj:/usr/bin/python3.?
+   fun:PyUFunc_FromFuncAndDataAndSignatureAndIdentity
+   fun:initumath
+   fun:PyInit__multiarray_umath
    ...
-   fun:gentype_generic_method
+}
+
+{
+   numpy
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   fun:default_malloc
+   fun:PyDataMem_UserNEW
+   ...
 }
 
 #
@@ -178,8 +189,8 @@
 {
    other
    Memcheck:Cond
-   obj:/usr/bin/python3.?
-   obj:/usr/bin/python3.?
+   obj:/usr/bin/python3.*
+   obj:/usr/bin/python3.*
    fun:_PyEval_EvalFrameDefault
    fun:_PyEval_EvalCodeWithName
    fun:_PyFunction_Vectorcall
@@ -187,17 +198,17 @@
    fun:_PyEval_EvalCodeWithName
    fun:_PyFunction_Vectorcall
    fun:_PyEval_EvalFrameDefault
-   obj:/usr/bin/python3.?
+   obj:/usr/bin/python3.*
    fun:_PyEval_EvalFrameDefault
-   obj:/usr/bin/python3.?
+   obj:/usr/bin/python3.*
 }
 
 {
    other
    Memcheck:Value8
-   obj:/usr/bin/python3.?
+   obj:/usr/bin/python3.*
    ...
-   obj:/usr/bin/python3.?
+   obj:/usr/bin/python3.*
    fun:__Pyx_PyObject_Call
    fun:__Pyx__PyObject_CallOneArg
 }
@@ -308,7 +319,7 @@
    ...
    fun:PyBytes_Repr
    fun:PyObject_Str
-   obj:/usr/bin/python3.?
+   obj:/usr/bin/python3.*
    ...
    fun:PyObject_Format
    ...
@@ -382,9 +393,9 @@
 {
    other
    Memcheck:Cond
-   obj:/usr/bin/python3.?
+   obj:/usr/bin/python3.*
    ...
-   obj:/usr/bin/python3.?
+   obj:/usr/bin/python3.*
    fun:__Pyx_PyObject_Call
    fun:__Pyx__PyObject_CallOneArg
    ...
@@ -410,9 +421,9 @@
    other
    Memcheck:Cond
    ...
-   obj:/usr/bin/python3.?
+   obj:/usr/bin/python3.*
    fun:_PyObject_CallMethodIdObjArgs
-   obj:/usr/bin/python3.?
+   obj:/usr/bin/python3.*
    ...
 }
 
@@ -437,9 +448,9 @@
    other
    Memcheck:Value8
    ...
-   obj:/usr/bin/python3.?
+   obj:/usr/bin/python3.*
    fun:_PyObject_CallMethodIdObjArgs
-   obj:/usr/bin/python3.?
+   obj:/usr/bin/python3.*
    ...
 }
 
@@ -455,25 +466,25 @@
    other
    Memcheck:Value8
    ...
-   obj:/usr/bin/python3.?
+   obj:/usr/bin/python3.*
    fun:PyDict_SetItem
-   obj:/usr/bin/python3.?
+   obj:/usr/bin/python3.*
    ...
 }
 
 {
    other
    Memcheck:Cond
-   obj:/usr/bin/python3.?
+   obj:/usr/bin/python3.*
    ...
-   obj:/usr/bin/python3.?
+   obj:/usr/bin/python3.*
 }
 
 {
    other
    Memcheck:Cond
    fun:realloc
-   obj:/usr/bin/python3.?
+   obj:/usr/bin/python3.*
    ...
    fun:_PyFunction_Vectorcall
 }
@@ -481,48 +492,26 @@
 {
    other
    Memcheck:Value8
-   obj:/usr/bin/python3.?
+   obj:/usr/bin/python3.*
    ...
-   obj:/usr/bin/python3.?
+   obj:/usr/bin/python3.*
 }
 
 {
    other
-   Memcheck:Leak
-   match-leak-kinds: definite
-   fun:malloc
-   obj:/usr/bin/python3.?
+   Memcheck:Value8
+   obj:/usr/bin/python3.*
    fun:_PyObject_MakeTpCall
-}
-
-{
-   other
-   Memcheck:Leak
-   match-leak-kinds: definite
-   fun:malloc
-   obj:/usr/bin/python3.?
-   obj:/usr/bin/python3.?
-   fun:_PyObject_MakeTpCall
-}
-
-{
-   other
-   Memcheck:Leak
-   match-leak-kinds: definite
-   fun:malloc
-   obj:/usr/bin/python3.?
-   ...
-   fun:PyTuple_New
-   ...
-}
-
-{
-   other
-   Memcheck:Leak
-   match-leak-kinds: definite
-   fun:malloc
-   obj:/usr/bin/python3.?
-   fun:PyList_AsTuple
+   fun:_PyEval_EvalFrameDefault
+   obj:/usr/bin/python3.11
+   obj:/usr/bin/python3.11
+   obj:/usr/bin/python3.11
+   fun:PyIter_Next
+   obj:/usr/bin/python3.11
+   fun:PyBytes_FromObject
+   obj:/usr/bin/python3.11
+   obj:/usr/bin/python3.11
+   fun:PyObject_Vectorcall
 }
 
 {
@@ -542,13 +531,28 @@
 }
 
 {
+   other
+   Memcheck:Leak
+   fun:calloc
+   ...
+   fun:_dl_catch_exception
+}
+
+{
    Pandas
    Memcheck:Leak
-   match-leak-kinds: definite
    fun:malloc
    ...
    obj:*site-packages/pandas/_libs/*.cpython-3*-x86_64-linux-gnu.so
    ...
+}
+
+{
+   Pandas 2.2.0
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:realloc
+   obj:*site-packages/pandas/*
 }
 
 {
@@ -558,30 +562,6 @@
    fun:malloc
    ...
    obj:*/site-packages/scipy/*.cpython-3*-x86_64-linux-gnu.so
-   ...
-}
-
-
-{
-   PyTuple_Pack
-   Memcheck:Leak
-   match-leak-kinds: definite
-   fun:malloc
-   obj:/usr/bin/python3.*
-   fun:PyTuple_Pack
-   obj:/usr/bin/python3.*
-   ...
-}
-
-{
-   PyAST_CompileObject
-   Memcheck:Leak
-   match-leak-kinds: definite
-   fun:malloc
-   obj:/usr/bin/python3.*
-   ...
-   fun:PyAST_CompileObject
-   obj:/usr/bin/python3.*
    ...
 }
 
@@ -757,6 +737,16 @@
 }
 
 {
+   _dl_catch_exception
+   Memcheck:Addr8
+   fun:strncmp
+   fun:is_dst
+   ...
+   fun:_dl_catch_exception
+   ...
+}
+
+{
    Python dictkeys_get_index
    Memcheck:Value8
    fun:dictkeys_get_index
@@ -773,5 +763,105 @@
    fun:posix_do_stat.constprop.0
    fun:os_stat_impl
    fun:os_stat
+   ...
+}
+
+{
+   Python PyLong_FromUnicodeObject
+   Memcheck:Cond
+   fun:PyLong_FromString
+   fun:PyLong_FromUnicodeObject
+}
+
+{
+   Python PyLong_FromUnicodeObject
+   Memcheck:Value8
+   fun:PyLong_FromString
+   fun:PyLong_FromUnicodeObject
+}
+
+{
+   Python
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:realloc
+   obj:/usr/bin/python3.*
+   fun:_PyEval_EvalFrameDefault
+   fun:_PyFunction_Vectorcall
+}
+
+{
+   Python
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   fun:PyList_New
+   fun:_PyEval_EvalFrameDefault
+   fun:_PyFunction_Vectorcall
+   ...
+}
+
+{
+   Python
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   fun:PyModule_ExecDef
+   obj:/usr/bin/python3.*
+   ...
+}
+
+{
+   Python
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   obj:/usr/bin/python3.*
+   ...
+}
+
+{
+   Python
+   Memcheck:Addr32
+   fun:__wcsncpy_avx2
+   fun:_Py_wgetcwd
+   obj:/usr/bin/python3.*
+   fun:Py_RunMain
+   fun:Py_BytesMain
+   fun:(below main)
+}
+
+{
+   Python
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   obj:/usr/bin/python3.*
+   ...
+}
+
+{
+   Python
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:*alloc
+   fun:_PyObject_GC_*
+   obj:/usr/bin/python3.*
+}
+
+
+{
+   Antimony with libsbml 5.20.1
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   fun:_ZN7libsbml12SBMLDocument14getAllElementsEPNS_13ElementFilterE
+   fun:_ZN7libsbml23CompFlatteningConverter21unsetExplicitlyListedEv
+   fun:_ZN7libsbml23CompFlatteningConverter17performConversionEv
+   fun:_ZN7libsbml23CompFlatteningConverter7convertEv
+   fun:_ZN7libsbml22CompSBMLDocumentPlugin16checkConsistencyEv
+   fun:_ZN7libsbml12SBMLDocument16checkConsistencyEv
+   ...
+   fun:loadAntimonyString
    ...
 }

@@ -10,7 +10,7 @@ namespace amici {
 
 namespace model_model_jakstat_adjoint{
 
-void dwdx_model_jakstat_adjoint(realtype *dwdx, const realtype t, const realtype *x, const realtype *p, const realtype *k, const realtype *h, const realtype *w, const realtype *tcl, const realtype *spl) {
+void dwdx_model_jakstat_adjoint(realtype *dwdx, const realtype t, const realtype *x, const realtype *p, const realtype *k, const realtype *h, const realtype *w, const realtype *tcl, const realtype *spl, bool include_static) {
   dwdx[0] = x[1]*2.0;
 }
 

@@ -1,5 +1,6 @@
 """AMICI model package setup"""
 import os
+import sys
 from pathlib import Path
 
 from amici import _get_amici_path
@@ -33,6 +34,7 @@ def get_extension() -> CMakeExtension:
             f"{prefix_path.as_posix()}/lib64/cmake/SuiteSparse",
             f"-DKLU_ROOT={prefix_path.as_posix()}",
             "-DAMICI_PYTHON_BUILD_EXT_ONLY=ON",
+            f"-DPython3_EXECUTABLE={Path(sys.executable).as_posix()}",
         ],
     )
 

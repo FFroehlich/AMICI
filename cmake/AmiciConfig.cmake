@@ -1,5 +1,12 @@
 @PACKAGE_INIT@
 
+# TODO remove after cmake files for test models have been regenerated
+# cmake >=3.27
+if(POLICY CMP0144)
+  cmake_policy(SET CMP0144 NEW)
+endif(POLICY CMP0144)
+
+
 include(CMakeFindDependencyMacro)
 
 find_package(OpenMP)

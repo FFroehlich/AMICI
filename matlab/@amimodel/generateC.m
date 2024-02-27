@@ -163,6 +163,7 @@ fprintf(fid,['                  ' num2str(this.nytrue) ',\n']);
 fprintf(fid,['                  ' num2str(this.nz) ',\n']);
 fprintf(fid,['                  ' num2str(this.nztrue) ',\n']);
 fprintf(fid,['                  ' num2str(this.nevent) ',\n']);
+fprintf(fid,['                  ' num2str(this.nevent) ',\n']);
 fprintf(fid,['                  0,\n']);
 fprintf(fid,['                  ' num2str(this.ng) ',\n']);
 fprintf(fid,['                  ' num2str(this.nw) ',\n']);
@@ -208,7 +209,7 @@ for ifun = this.funs
 end
 fprintf(fid,'};\n\n');
 fprintf(fid,['} // namespace model_' this.modelname '\n\n']);
-fprintf(fid,'} // namespace amici \n\n');
+fprintf(fid,'} // namespace amici\n\n');
 fprintf(fid,['#endif /* _amici_' this.modelname '_h */\n']);
 fclose(fid);
 
@@ -252,6 +253,7 @@ function argstr = removeTypes(argstr)
 
 argstr = strrep(argstr,'realtype','');
 argstr = strrep(argstr,'int','');
+argstr = strrep(argstr,'bool','');
 argstr = strrep(argstr,'const','');
 argstr = strrep(argstr,'double','');
 argstr = strrep(argstr,'SUNMatrixContent_Sparse','');

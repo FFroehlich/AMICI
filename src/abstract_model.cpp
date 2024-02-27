@@ -11,7 +11,7 @@ std::string AbstractModel::getAmiciCommit() const {
 }
 
 void AbstractModel::
-    fx0(realtype* /*x0*/, const realtype /*t*/, realtype const* /*p*/,
+    fx0(realtype* /*x0*/, realtype const /*t*/, realtype const* /*p*/,
         realtype const* /*k*/) {
     throw AmiException(
         "Requested functionality is not supported as %s is "
@@ -25,14 +25,14 @@ bool AbstractModel::isFixedParameterStateReinitializationAllowed() const {
 }
 
 void AbstractModel::fx0_fixedParameters(
-    realtype* /*x0*/, const realtype /*t*/, realtype const* /*p*/,
+    realtype* /*x0*/, realtype const /*t*/, realtype const* /*p*/,
     realtype const* /*k*/, gsl::span<int const> /*reinitialization_state_idxs*/
 ) {
     // no-op default implementation
 }
 
 void AbstractModel::fsx0_fixedParameters(
-    realtype* /*sx0*/, const realtype /*t*/, realtype const* /*x0*/,
+    realtype* /*sx0*/, realtype const /*t*/, realtype const* /*x0*/,
     realtype const* /*p*/, realtype const* /*k*/, int const /*ip*/,
     gsl::span<int const> /*reinitialization_state_idxs*/
 ) {
@@ -40,7 +40,7 @@ void AbstractModel::fsx0_fixedParameters(
 }
 
 void AbstractModel::fsx0(
-    realtype* /*sx0*/, const realtype /*t*/, realtype const* /*x0*/,
+    realtype* /*sx0*/, realtype const /*t*/, realtype const* /*x0*/,
     realtype const* /*p*/, realtype const* /*k*/, int const /*ip*/
 ) {
     throw AmiException(
@@ -55,7 +55,7 @@ void AbstractModel::fdx0(AmiVector& /*x0*/, AmiVector& /*dx0*/) {
 }
 
 void AbstractModel::fstau(
-    realtype* /*stau*/, const realtype /*t*/, realtype const* /*x*/,
+    realtype* /*stau*/, realtype const /*t*/, realtype const* /*x*/,
     realtype const* /*p*/, realtype const* /*k*/, realtype const* /*h*/,
     realtype const* /*tcl*/, realtype const* /*sx*/, int const /*ip*/,
     int const /*ie*/
@@ -68,7 +68,7 @@ void AbstractModel::fstau(
 }
 
 void AbstractModel::
-    fy(realtype* /*y*/, const realtype /*t*/, realtype const* /*x*/,
+    fy(realtype* /*y*/, realtype const /*t*/, realtype const* /*x*/,
        realtype const* /*p*/, realtype const* /*k*/, realtype const* /*h*/,
        realtype const* /*w*/) {
     throw AmiException(
@@ -79,7 +79,7 @@ void AbstractModel::
 }
 
 void AbstractModel::fdydp(
-    realtype* /*dydp*/, const realtype /*t*/, realtype const* /*x*/,
+    realtype* /*dydp*/, realtype const /*t*/, realtype const* /*x*/,
     realtype const* /*p*/, realtype const* /*k*/, realtype const* /*h*/,
     int const /*ip*/, realtype const* /*w*/, realtype const* /*dwdp*/
 ) {
@@ -91,7 +91,7 @@ void AbstractModel::fdydp(
 }
 
 void AbstractModel::fdydp(
-    realtype* /*dydp*/, const realtype /*t*/, realtype const* /*x*/,
+    realtype* /*dydp*/, realtype const /*t*/, realtype const* /*x*/,
     realtype const* /*p*/, realtype const* /*k*/, realtype const* /*h*/,
     int /*ip*/, realtype const* /*w*/, realtype const* /*tcl*/,
     realtype const* /*dtcldp*/, realtype const* /*spl*/,
@@ -105,7 +105,7 @@ void AbstractModel::fdydp(
 }
 
 void AbstractModel::fdydx(
-    realtype* /*dydx*/, const realtype /*t*/, realtype const* /*x*/,
+    realtype* /*dydx*/, realtype const /*t*/, realtype const* /*x*/,
     realtype const* /*p*/, realtype const* /*k*/, realtype const* /*h*/,
     realtype const* /*w*/, realtype const* /*dwdx*/
 ) {
@@ -117,7 +117,7 @@ void AbstractModel::fdydx(
 }
 
 void AbstractModel::
-    fz(realtype* /*z*/, int const /*ie*/, const realtype /*t*/,
+    fz(realtype* /*z*/, int const /*ie*/, realtype const /*t*/,
        realtype const* /*x*/, realtype const* /*p*/, realtype const* /*k*/,
        realtype const* /*h*/) {
     throw AmiException(
@@ -128,7 +128,7 @@ void AbstractModel::
 }
 
 void AbstractModel::
-    fsz(realtype* /*sz*/, int const /*ie*/, const realtype /*t*/,
+    fsz(realtype* /*sz*/, int const /*ie*/, realtype const /*t*/,
         realtype const* /*x*/, realtype const* /*p*/, realtype const* /*k*/,
         realtype const* /*h*/, realtype const* /*sx*/, int const /*ip*/) {
     throw AmiException(
@@ -139,7 +139,7 @@ void AbstractModel::
 }
 
 void AbstractModel::
-    frz(realtype* /*rz*/, int const /*ie*/, const realtype /*t*/,
+    frz(realtype* /*rz*/, int const /*ie*/, realtype const /*t*/,
         realtype const* /*x*/, realtype const* /*p*/, realtype const* /*k*/,
         realtype const* /*h*/) {
     throw AmiException(
@@ -150,7 +150,7 @@ void AbstractModel::
 }
 
 void AbstractModel::fsrz(
-    realtype* /*srz*/, int const /*ie*/, const realtype /*t*/,
+    realtype* /*srz*/, int const /*ie*/, realtype const /*t*/,
     realtype const* /*x*/, realtype const* /*p*/, realtype const* /*k*/,
     realtype const* /*h*/, realtype const* /*sx*/, int const /*ip*/
 ) {
@@ -162,7 +162,7 @@ void AbstractModel::fsrz(
 }
 
 void AbstractModel::fdzdp(
-    realtype* /*dzdp*/, int const /*ie*/, const realtype /*t*/,
+    realtype* /*dzdp*/, int const /*ie*/, realtype const /*t*/,
     realtype const* /*x*/, realtype const* /*p*/, realtype const* /*k*/,
     realtype const* /*h*/, int const /*ip*/
 ) {
@@ -174,7 +174,7 @@ void AbstractModel::fdzdp(
 }
 
 void AbstractModel::fdzdx(
-    realtype* /*dzdx*/, int const /*ie*/, const realtype /*t*/,
+    realtype* /*dzdx*/, int const /*ie*/, realtype const /*t*/,
     realtype const* /*x*/, realtype const* /*p*/, realtype const* /*k*/,
     realtype const* /*h*/
 ) {
@@ -186,7 +186,7 @@ void AbstractModel::fdzdx(
 }
 
 void AbstractModel::fdrzdp(
-    realtype* /*drzdp*/, int const /*ie*/, const realtype /*t*/,
+    realtype* /*drzdp*/, int const /*ie*/, realtype const /*t*/,
     realtype const* /*x*/, realtype const* /*p*/, realtype const* /*k*/,
     realtype const* /*h*/, int const /*ip*/
 ) {
@@ -198,7 +198,7 @@ void AbstractModel::fdrzdp(
 }
 
 void AbstractModel::fdrzdx(
-    realtype* /*drzdx*/, int const /*ie*/, const realtype /*t*/,
+    realtype* /*drzdx*/, int const /*ie*/, realtype const /*t*/,
     realtype const* /*x*/, realtype const* /*p*/, realtype const* /*k*/,
     realtype const* /*h*/
 ) {
@@ -210,7 +210,7 @@ void AbstractModel::fdrzdx(
 }
 
 void AbstractModel::fdeltax(
-    realtype* /*deltax*/, const realtype /*t*/, realtype const* /*x*/,
+    realtype* /*deltax*/, realtype const /*t*/, realtype const* /*x*/,
     realtype const* /*p*/, realtype const* /*k*/, realtype const* /*h*/,
     int const /*ie*/, realtype const* /*xdot*/, realtype const* /*xdot_old*/
 ) {
@@ -222,7 +222,7 @@ void AbstractModel::fdeltax(
 }
 
 void AbstractModel::fdeltasx(
-    realtype* /*deltasx*/, const realtype /*t*/, realtype const* /*x*/,
+    realtype* /*deltasx*/, realtype const /*t*/, realtype const* /*x*/,
     realtype const* /*p*/, realtype const* /*k*/, realtype const* /*h*/,
     realtype const* /*w*/, int const /*ip*/, int const /*ie*/,
     realtype const* /*xdot*/, realtype const* /*xdot_old*/,
@@ -236,7 +236,7 @@ void AbstractModel::fdeltasx(
 }
 
 void AbstractModel::fdeltaxB(
-    realtype* /*deltaxB*/, const realtype /*t*/, realtype const* /*x*/,
+    realtype* /*deltaxB*/, realtype const /*t*/, realtype const* /*x*/,
     realtype const* /*p*/, realtype const* /*k*/, realtype const* /*h*/,
     int const /*ie*/, realtype const* /*xdot*/, realtype const* /*xdot_old*/,
     realtype const* /*xB*/
@@ -249,7 +249,7 @@ void AbstractModel::fdeltaxB(
 }
 
 void AbstractModel::fdeltaqB(
-    realtype* /*deltaqB*/, const realtype /*t*/, realtype const* /*x*/,
+    realtype* /*deltaqB*/, realtype const /*t*/, realtype const* /*x*/,
     realtype const* /*p*/, realtype const* /*k*/, realtype const* /*h*/,
     int const /*ip*/, int const /*ie*/, realtype const* /*xdot*/,
     realtype const* /*xdot_old*/, realtype const* /*xB*/
@@ -262,7 +262,7 @@ void AbstractModel::fdeltaqB(
 }
 
 void AbstractModel::fsigmay(
-    realtype* /*sigmay*/, const realtype /*t*/, realtype const* /*p*/,
+    realtype* /*sigmay*/, realtype const /*t*/, realtype const* /*p*/,
     realtype const* /*k*/, realtype const* /*y*/
 ) {
     throw AmiException(
@@ -273,7 +273,7 @@ void AbstractModel::fsigmay(
 }
 
 void AbstractModel::fdsigmaydp(
-    realtype* /*dsigmaydp*/, const realtype /*t*/, realtype const* /*p*/,
+    realtype* /*dsigmaydp*/, realtype const /*t*/, realtype const* /*p*/,
     realtype const* /*k*/, realtype const* /*y*/, int const /*ip*/
 ) {
     throw AmiException(
@@ -284,7 +284,7 @@ void AbstractModel::fdsigmaydp(
 }
 
 void AbstractModel::fdsigmaydy(
-    realtype* /*dsigmaydy*/, const realtype /*t*/, realtype const* /*p*/,
+    realtype* /*dsigmaydy*/, realtype const /*t*/, realtype const* /*p*/,
     realtype const* /*k*/, realtype const* /*y*/
 ) {
     throw AmiException(
@@ -295,7 +295,7 @@ void AbstractModel::fdsigmaydy(
 }
 
 void AbstractModel::fsigmaz(
-    realtype* /*sigmaz*/, const realtype /*t*/, realtype const* /*p*/,
+    realtype* /*sigmaz*/, realtype const /*t*/, realtype const* /*p*/,
     realtype const* /*k*/
 ) {
     throw AmiException(
@@ -306,7 +306,7 @@ void AbstractModel::fsigmaz(
 }
 
 void AbstractModel::fdsigmazdp(
-    realtype* /*dsigmazdp*/, const realtype /*t*/, realtype const* /*p*/,
+    realtype* /*dsigmazdp*/, realtype const /*t*/, realtype const* /*p*/,
     realtype const* /*k*/, int const /*ip*/
 ) {
     throw AmiException(
@@ -437,10 +437,11 @@ void AbstractModel::fdJrzdsigma(
     );
 }
 
-void AbstractModel::
-    fw(realtype* /*w*/, const realtype /*t*/, realtype const* /*x*/,
-       realtype const* /*p*/, realtype const* /*k*/, realtype const* /*h*/,
-       realtype const* /*tcl*/, realtype const* /*spl*/) {
+void AbstractModel::fw(
+    realtype* /*w*/, realtype const /*t*/, realtype const* /*x*/,
+    realtype const* /*p*/, realtype const* /*k*/, realtype const* /*h*/,
+    realtype const* /*tcl*/, realtype const* /*spl*/, bool /*include_static*/
+) {
     throw AmiException(
         "Requested functionality is not supported as %s is "
         "not implemented for this model!",
@@ -449,10 +450,10 @@ void AbstractModel::
 }
 
 void AbstractModel::fdwdp(
-    realtype* /*dwdp*/, const realtype /*t*/, realtype const* /*x*/,
+    realtype* /*dwdp*/, realtype const /*t*/, realtype const* /*x*/,
     realtype const* /*p*/, realtype const* /*k*/, realtype const* /*h*/,
     realtype const* /*w*/, realtype const* /*tcl*/, realtype const* /*stcl*/,
-    realtype const* /*spl*/, realtype const* /*sspl*/
+    realtype const* /*spl*/, realtype const* /*sspl*/, bool /*include_static*/
 ) {
     throw AmiException(
         "Requested functionality is not supported as %s is "
@@ -477,23 +478,11 @@ void AbstractModel::fdwdp_rowvals(SUNMatrixWrapper& /*dwdp*/) {
     );
 }
 
-void AbstractModel::fdwdp(
-    realtype* /*dwdp*/, const realtype /*t*/, realtype const* /*x*/,
-    realtype const* /*p*/, realtype const* /*k*/, realtype const* /*h*/,
-    realtype const* /*w*/, realtype const* /*tcl*/, realtype const* /*stcl*/,
-    realtype const* /*spl*/, realtype const* /*sspl*/, int const /*ip*/
-) {
-    throw AmiException(
-        "Requested functionality is not supported as %s is "
-        "not implemented for this model!",
-        __func__
-    );
-}
-
 void AbstractModel::fdwdx(
-    realtype* /*dwdx*/, const realtype /*t*/, realtype const* /*x*/,
+    realtype* /*dwdx*/, realtype const /*t*/, realtype const* /*x*/,
     realtype const* /*p*/, realtype const* /*k*/, realtype const* /*h*/,
-    realtype const* /*w*/, realtype const* /*tcl*/, realtype const* /*spl*/
+    realtype const* /*w*/, realtype const* /*tcl*/, realtype const* /*spl*/,
+    bool /*include_static*/
 ) {
     throw AmiException(
         "Requested functionality is not supported as %s is "
@@ -521,7 +510,7 @@ void AbstractModel::fdwdx_rowvals(SUNMatrixWrapper& /*dwdx*/) {
 void AbstractModel::fdwdw(
     realtype* /*dwdw*/, realtype /*t*/, realtype const* /*x*/,
     realtype const* /*p*/, realtype const* /*k*/, realtype const* /*h*/,
-    realtype const* /*w*/, realtype const* /*tcl*/
+    realtype const* /*w*/, realtype const* /*tcl*/, bool /*include_static*/
 ) {
     throw AmiException(
         "Requested functionality is not supported as %s "

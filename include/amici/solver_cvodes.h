@@ -218,7 +218,7 @@ class CVodeSolver : public Solver {
     init(realtype t0, AmiVector const& x0, AmiVector const& dx0) const override;
 
     void initSteadystate(
-        const realtype t0, AmiVector const& x0, AmiVector const& dx0
+        realtype const t0, AmiVector const& x0, AmiVector const& dx0
     ) const override;
 
     void sensInit1(AmiVectorArray const& sx0, AmiVectorArray const& sdx0)

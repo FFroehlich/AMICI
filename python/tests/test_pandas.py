@@ -5,6 +5,8 @@ import itertools
 import amici
 import numpy as np
 import pytest
+from amici.testing import skip_on_valgrind
+
 
 # test parameters for test_pandas_import_export
 combos = itertools.product([(10, 5), (5, 10), ()], repeat=3)
@@ -18,6 +20,7 @@ cases = [
 ]
 
 
+@skip_on_valgrind
 @pytest.mark.parametrize("case", cases)
 def test_pandas_import_export(sbml_example_presimulation_module, case):
     """TestCase class for testing csv import using pandas"""

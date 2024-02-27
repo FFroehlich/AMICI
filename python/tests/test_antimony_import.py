@@ -2,8 +2,10 @@ import amici
 import numpy as np
 from amici.antimony_import import antimony2amici
 from amici.testing import TemporaryDirectoryWinSafe as TemporaryDirectory
+from amici.testing import skip_on_valgrind
 
 
+@skip_on_valgrind
 def test_antimony_example():
     """If this example requires changes, please also update documentation/python_interface.rst."""
     ant_model = """

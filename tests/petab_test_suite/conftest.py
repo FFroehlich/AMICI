@@ -2,12 +2,11 @@
 
 import re
 import sys
-from typing import List
 
 from petabtests.core import get_cases
 
 
-def parse_selection(selection_str: str) -> List[int]:
+def parse_selection(selection_str: str) -> list[int]:
     """
     Parse comma-separated list of integer ranges, return selected indices as
     integer list
