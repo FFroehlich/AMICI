@@ -22,7 +22,9 @@ import numpy as np
 import pandas as pd
 import pytest
 from amici.constants import SymbolId
-from amici.gradient_check import check_derivatives
+from fiddy import MethodId, get_derivative
+from fiddy.extensions.amici import reshape, run_amici_simulation_to_cached_functions
+from fiddy.success import Consistency
 from numpy.testing import assert_allclose
 
 
@@ -73,13 +75,29 @@ def test_sbml_testsuite_case(
             inplace=True,
         )
 
+        # TODO remove after https://github.com/AMICI-dev/AMICI/pull/2101
+        #   and https://github.com/AMICI-dev/AMICI/issues/2106
+        # Don't attempt to generate sensitivity code for models with events+algebraic rules, which will fail
+        sbml_file = find_model_file(current_test_path, test_id)
+        sbml_document = sbml.SBMLReader().readSBMLFromFile(str(sbml_file))
+        sbml_model = sbml_document.getModel()
+        has_events = sbml_model.getNumEvents() > 0
+        has_algebraic_rules = any(
+            rule.getTypeCode() == sbml.SBML_ALGEBRAIC_RULE
+            for rule in sbml_model.getListOfRules()
+        )
+        generate_sensitivity_code = not (has_events and has_algebraic_rules)
+        # TODO https://github.com/AMICI-dev/AMICI/issues/2109
+        generate_sensitivity_code &= test_id not in {"01240"}
+        # ^^^^^^^^
+
         # setup model
         model_dir = Path(__file__).parent / "SBMLTestModels" / test_id
         model, solver, wrapper = compile_model(
             current_test_path,
             test_id,
             model_dir,
-            generate_sensitivity_code=test_id in sensitivity_check_cases,
+            generate_sensitivity_code=generate_sensitivity_code,
         )
         settings = read_settings_file(current_test_path, test_id)
 
@@ -93,7 +111,7 @@ def test_sbml_testsuite_case(
             else:
                 raise RuntimeError("Simulation failed unexpectedly")
 
-        # verify
+        # verify simulation results
         simulated = verify_results(
             settings, rdata, results, wrapper, model, atol, rtol
         )
@@ -101,11 +119,66 @@ def test_sbml_testsuite_case(
         # record results
         write_result_file(simulated, test_id, result_path)
 
-        # check sensitivities for selected models
-        if epsilon := sensitivity_check_cases.get(test_id):
-            solver.setSensitivityOrder(amici.SensitivityOrder.first)
-            solver.setSensitivityMethod(amici.SensitivityMethod.forward)
-            check_derivatives(model, solver, epsilon=epsilon)
+        # test sensitivities
+        if not model.getParameters():
+            pytest.skip("No parameters -> no sensitivities to check")
+
+        # TODO see https://github.com/AMICI-dev/AMICI/pull/2101
+        if not generate_sensitivity_code:
+            pytest.skip("Sensitivity analysis is known to fail.")
+        if any(id_ == 0 for id_ in model.idlist):
+            pytest.skip("Sensitivity analysis for DAE is known to fail.")
+
+        solver.setSensitivityOrder(amici.SensitivityOrder.first)
+        solver.setSensitivityMethod(amici.SensitivityMethod.forward)
+        # currently only checking "x"/"sx" for FSA
+        (
+            amici_function_f,
+            amici_derivative_f,
+            structures_f,
+        ) = run_amici_simulation_to_cached_functions(
+            amici_model=model,
+            amici_solver=solver,
+            derivative_variables=["x"],
+            cache=False,
+        )
+        rdata_f = amici.runAmiciSimulation(model, solver)
+
+        # solver.setSensitivityMethod(amici.SensitivityMethod.adjoint)
+        # (
+        #    amici_function_a,
+        #    amici_derivative_a,
+        #    structures_a,
+        # ) = run_amici_simulation_to_cached_functions(
+        #    amici_model=model,
+        #    amici_solver=solver,
+        #    derivative_variables=["x"],
+        #    cache=False,
+        # )
+        # rdata_a = amici.runAmiciSimulation(model, solver)
+
+        point = np.asarray(model.getParameters())
+
+        derivative = get_derivative(
+            # can use `_f` or `_a` here, should be no difference
+            function=amici_function_f,
+            point=point,
+            sizes=[1e-9, 1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1],
+            direction_ids=model.getParameterIds(),
+            method_ids=[MethodId.FORWARD, MethodId.BACKWARD, MethodId.CENTRAL],
+            relative_sizes=True,
+            success_checker=Consistency(rtol=1e-2, atol=1e-4),
+        )
+
+        derivative_fd = reshape(
+            derivative.value.flat, structures_f["derivative"], sensitivities=True
+        )["x"]
+        derivative_fsa = rdata_f.sx
+        # derivative_asa = rdata_a.sllh  # currently None, define some objective?
+
+        # could alternatively use a `fiddy.DerivativeCheck` class
+        if not np.isclose(derivative_fd, derivative_fsa, rtol=5e-2, atol=5e-2).all():
+            raise ValueError("Gradients were not validated.")
 
     except amici.sbml_import.SBMLException as err:
         pytest.skip(str(err))

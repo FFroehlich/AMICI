@@ -5,6 +5,7 @@ on:
       - develop
       - master
       - release**
+      - check_grad_sbml_test_suite
   pull_request:
     paths:
       - .github/workflows/test_sbml_semantic_test_suite.yml
@@ -45,6 +46,8 @@ jobs:
       uses: ./.github/actions/install-apt-dependencies
 
     - run: AMICI_PARALLEL_COMPILE="" ./scripts/installAmiciSource.sh
+    - run: |
+        source build/venv/bin/activate && pip install git+https://github.com/ICB-DCM/fiddy.git
     - run: AMICI_PARALLEL_COMPILE="" ./scripts/run-SBMLTestsuite.sh ${{ matrix.cases }}
 
     - name: "Upload artifact: SBML semantic test suite results"

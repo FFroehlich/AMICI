@@ -70,6 +70,13 @@ def pytest_generate_tests(metafunc):
         # Get CLI option
         cases = metafunc.config.getoption("cases")
         if cases:
+            # iff specific case IDs are given and the SBML semantic test suite is not there, we should fail.
+            if not SBML_SEMANTIC_CASES_DIR.exists():
+                raise ValueError(
+                    "The SBML semantic cases are missing. You can install them with "
+                    "'AMICI/scripts/run-SBMLTestsuite.sh'."
+                )
+
             # Run selected tests
             last_id = int(list(get_all_semantic_case_ids())[-1])
             test_numbers = sorted(set(parse_selection(cases, last_id)))
