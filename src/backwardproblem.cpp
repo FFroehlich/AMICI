@@ -21,6 +21,7 @@ BackwardProblem::BackwardProblem(
     , dxB_(fwd.model->nx_solver, solver_->getSunContext())
     , xQB_(fwd.model->nJ * fwd.model->nplist(), solver_->getSunContext())
     , x_disc_(fwd.getStatesAtDiscontinuities())
+    , x_old_disc_(fwd.getStatesBeforeDiscontinuities())
     , xdot_disc_(fwd.getRHSAtDiscontinuities())
     , xdot_old_disc_(fwd.getRHSBeforeDiscontinuities())
     , sx0_(fwd.getStateSensitivity())
@@ -92,16 +93,16 @@ void BackwardProblem::workBackwardProblem() {
                 solver_->writeSolutionB(&t_, xB_, dxB_, xQB_, which);
             }
 
-            /* handle discontinuity */
-            if (!discs_.empty() && tnext == discs_.back()) {
-                discs_.pop_back();
-                handleEventB();
-            }
-
             /* handle data-point */
             if (it >= 0 && tnext == model_->getTimepoint(it)) {
                 handleDataPointB(it);
                 it--;
+            }
+
+            /* handle discontinuity */
+            if (!discs_.empty() && tnext == discs_.back()) {
+                discs_.pop_back();
+                handleEventB();
             }
 
             /* reinit states */
@@ -133,39 +134,53 @@ void BackwardProblem::handleEventB() {
     auto x_disc = this->x_disc_.back();
     this->x_disc_.pop_back();
 
+    auto x_old_disc = this->x_old_disc_.back();
+    this->x_old_disc_.pop_back();
+
     auto xdot_disc = this->xdot_disc_.back();
     this->xdot_disc_.pop_back();
 
     auto xdot_old_disc = this->xdot_old_disc_.back();
     this->xdot_old_disc_.pop_back();
 
-    for (int ie = 0; ie < model_->ne; ie++) {
+    auto x_in_event = AmiVector(x_disc);
+    for (int iv = 0; iv < x_in_event.getLength(); iv++)
+        x_in_event[iv] = 0.5 * (x_disc.at(iv) + x_old_disc.at(iv));
 
-        if (rootidx[ie] == 0) {
-            continue;
-        }
-
-        model_->addAdjointQuadratureEventUpdate(
-            xQB_, ie, t_, x_disc, xB_, xdot_disc, xdot_old_disc
-        );
-        model_->addAdjointStateEventUpdate(
-            xB_, ie, t_, x_disc, xdot_disc, xdot_old_disc
-        );
-
-        if (model_->nz > 0) {
-            for (int ix = 0; ix < model_->nxtrue_solver; ++ix) {
-                for (int iJ = 0; iJ < model_->nJ; ++iJ) {
-                    xB_[ix + iJ * model_->nxtrue_solver] += dJzdx_
-                        [iJ
-                         + (ix + nroots_[ie] * model_->nx_solver) * model_->nJ];
-                }
-            }
-        }
-
-        nroots_[ie]--;
-    }
+    auto xdot_in_event = AmiVector(xdot_disc);
+    for (int iv = 0; iv < xdot_in_event.getLength(); iv++)
+        xdot_in_event[iv] = 0.5 * (xdot_disc.at(iv) + xdot_old_disc.at(iv));
 
     model_->updateHeavisideB(rootidx.data());
+
+    auto delta_x = AmiVector(x_disc.getLength(), solver_->getSunContext());
+    for (int iv = 0; iv < xdot_in_event.getLength(); iv++)
+        delta_x[iv] = (x_disc.at(iv) - x_old_disc.at(iv));
+
+    for (int ie = 0; ie < model_->ne; ie++) {
+
+        if (rootidx[ie] == 1) {
+
+            model_->addAdjointQuadratureEventUpdate(
+                xQB_, ie, t_, x_old_disc, xB_, xdot_disc, xdot_old_disc, delta_x
+            );
+            model_->addAdjointStateEventUpdate(
+                xB_, ie, t_, x_old_disc, xdot_disc, xdot_old_disc, delta_x
+            );
+
+            if (model_->nz > 0) {
+                for (int ix = 0; ix < model_->nxtrue_solver; ++ix) {
+                    for (int iJ = 0; iJ < model_->nJ; ++iJ) {
+                        xB_[ix + iJ * model_->nxtrue_solver] += dJzdx_
+                            [iJ
+                             + (ix + nroots_[ie] * model_->nx_solver)
+                                   * model_->nJ];
+                    }
+                }
+            }
+            nroots_[ie]--;
+        }
+    }
 }
 
 void BackwardProblem::handleDataPointB(int const it) {

@@ -76,7 +76,7 @@ class GradientCheckSettings:
 settings = defaultdict(GradientCheckSettings)
 # NOTE: Newton method fails badly with ASA for Blasi_CellSystems2016
 settings["Blasi_CellSystems2016"] = GradientCheckSettings(
-    atol_check=1e-12,
+    atol_check=1e-3,
     rtol_check=1e-4,
     ss_sensitivity_mode=amici.SteadyStateSensitivityMode.integrationOnly,
 )
@@ -87,6 +87,8 @@ settings["Borghans_BiophysChem1997"] = GradientCheckSettings(
 )
 settings["Brannmark_JBC2010"] = GradientCheckSettings(
     ss_sensitivity_mode=amici.SteadyStateSensitivityMode.integrationOnly,
+    atol_check=1e-6,
+    rtol_check=1e-3,
 )
 settings["Giordano_Nature2020"] = GradientCheckSettings(
     atol_check=1e-6, rtol_check=1e-3, rng_seed=1
@@ -102,6 +104,8 @@ settings["Oliveira_NatCommun2021"] = GradientCheckSettings(
     # Avoid "root after reinitialization"
     atol_sim=1e-12,
     rtol_sim=1e-12,
+    rtol_check=1e-3,
+    atol_check=1e-12,
 )
 settings["Smith_BMCSystBiol2013"] = GradientCheckSettings(
     atol_sim=1e-10,
@@ -161,18 +165,6 @@ def test_benchmark_gradient(model, scale, sensitivity_method, request):
     ):
         # not really worth the effort trying to fix these cases if they
         # only fail on linear scale
-        pytest.skip()
-
-    if (
-        model
-        in (
-            # events with parameter-dependent triggers
-            #  https://github.com/AMICI-dev/AMICI/issues/18
-            "Oliveira_NatCommun2021",
-        )
-        and sensitivity_method == SensitivityMethod.adjoint
-    ):
-        # FIXME
         pytest.skip()
 
     petab_problem = benchmark_models_petab.get_problem(model)

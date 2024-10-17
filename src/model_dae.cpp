@@ -394,6 +394,16 @@ void Model_DAE::fJvB(
 }
 
 void Model_DAE::fxBdot(
+    realtype t, AmiVector const& x, AmiVector const& dx, AmiVector const& xB,
+    AmiVector const& dxB, AmiVector& xBdot
+) {
+    fxBdot(
+        t, x.getNVector(), dx.getNVector(), xB.getNVector(), dxB.getNVector(),
+        xBdot.getNVector()
+    );
+}
+
+void Model_DAE::fxBdot(
     realtype t, const_N_Vector x, const_N_Vector dx, const_N_Vector xB,
     const_N_Vector dxB, N_Vector xBdot
 ) {

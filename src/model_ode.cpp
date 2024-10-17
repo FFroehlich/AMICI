@@ -396,7 +396,16 @@ void Model_ODE::fJvB(
     derived_state_.JB_.multiply(JvB, vB);
 }
 
-void Model_ODE::fxBdot(realtype t, N_Vector x, N_Vector xB, N_Vector xBdot) {
+void Model_ODE::fxBdot(
+    realtype t, AmiVector const& x, AmiVector const& /*dx*/,
+    AmiVector const& xB, AmiVector const& /*dxB*/, AmiVector& xBdot
+) {
+    fxBdot(t, x.getNVector(), xB.getNVector(), xBdot.getNVector());
+}
+
+void Model_ODE::fxBdot(
+    realtype t, const_N_Vector x, const_N_Vector xB, N_Vector xBdot
+) {
     N_VConst(0.0, xBdot);
     fJSparseB(t, x, xB, nullptr, derived_state_.JB_);
     derived_state_.JB_.refresh();

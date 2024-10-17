@@ -134,6 +134,12 @@ class Model_Test : public Model
         throw AmiException("not implemented");
     }
 
+    void fxBdot(realtype /*t*/, const AmiVector &/*x*/,
+                const AmiVector &/*dx*/, const AmiVector &/*xB*/,
+                const AmiVector &/*dxB*/, AmiVector &/*xBdot*/) override {
+        throw AmiException("not implemented");
+    }
+
     void fJSparseB_ss(SUNMatrix /*JB*/) override {
         throw AmiException("not implemented");
     }

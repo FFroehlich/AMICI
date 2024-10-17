@@ -214,6 +214,11 @@ class Model_DAE : public Model {
      */
     void fxdot(realtype t, const_N_Vector x, const_N_Vector dx, N_Vector xdot);
 
+    void fxBdot(
+        realtype t, AmiVector const& x, AmiVector const& dx,
+        AmiVector const& xB, AmiVector const& dxB, AmiVector& xBdot
+    ) override;
+
     /**
      * @brief Right hand side of differential equation for adjoint state xB
      * @param t timepoint

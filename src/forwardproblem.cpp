@@ -250,6 +250,11 @@ void ForwardProblem::handleEvent(
         /* compute the new xdot  */
         model->fxdot(t_, x_, dx_, xdot_);
         applyEventSensiBolusFSA();
+    } else if (solver->computingASA()) {
+        /* compute the new xdot  */
+        model->fxdot(t_, x_, dx_, xdot_);
+        xdot_disc_.push_back(xdot_);
+        x_disc_.push_back(x_);
     }
 
     handle_secondary_event(tlastroot);
@@ -310,16 +315,16 @@ void ForwardProblem::storeEvent() {
 }
 
 void ForwardProblem::store_pre_event_state(bool seflag, bool initial_event) {
-    /* if we need to do forward sensitivities later on we need to store the old
-     * x and the old xdot */
+    // if we need to do forward sensitivities later on,
+    // we need to store the old x and the old xdot
     if (solver->getSensitivityOrder() >= SensitivityOrder::first) {
         /* store x and xdot to compute jump in sensitivities */
         x_old_.copy(x_);
-    }
-    if (solver->computingFSA()) {
         model->fxdot(t_, x_, dx_, xdot_);
         xdot_old_.copy(xdot_);
         dx_old_.copy(dx_);
+    }
+    if (solver->computingFSA()) {
         /* compute event-time derivative only for primary events, we get
          * into trouble with multiple simultaneously firing events here (but
          * is this really well defined then?), in that case just use the
@@ -336,8 +341,7 @@ void ForwardProblem::store_pre_event_state(bool seflag, bool initial_event) {
             std::fill(stau_.begin(), stau_.end(), 0.0);
     } else if (solver->computingASA()) {
         /* store x to compute jump in discontinuity */
-        x_disc_.push_back(x_);
-        xdot_disc_.push_back(xdot_);
+        x_old_disc_.push_back(x_old_);
         xdot_old_disc_.push_back(xdot_old_);
     }
 }

@@ -71,6 +71,21 @@ class AbstractModel {
     ) = 0;
 
     /**
+     * @brief Residual function of adjoint state
+     * @param t time
+     * @param x state
+     * @param dx time derivative of state (DAE only)
+     * @param xB adjoint state
+     * @param dxB time derivative of adjoint state (DAE only)
+     * @param xBdot array to which values of the residual function will be
+     * written
+     */
+    virtual void fxBdot(
+        realtype t, AmiVector const& x, AmiVector const& dx,
+        AmiVector const& xB, AmiVector const& dxB, AmiVector& xBdot
+    ) = 0;
+
+    /**
      * @brief Residual function backward when running in steady state mode
      * @param t time
      * @param xB adjoint state
@@ -565,11 +580,14 @@ class AbstractModel {
      * @param xdot new model right hand side
      * @param xdot_old previous model right hand side
      * @param xB current adjoint state
+     * @param xBdot right hand side of adjoint state
+     * @param tcl total abundances for conservation laws
      */
     virtual void fdeltaxB(
         realtype* deltaxB, realtype const t, realtype const* x,
         realtype const* p, realtype const* k, realtype const* h, int ie,
-        realtype const* xdot, realtype const* xdot_old, realtype const* xB
+        realtype const* xdot, realtype const* xdot_old, realtype const* xB,
+        realtype const* xBdot, realtype const* tcl
     );
 
     /**
@@ -585,11 +603,13 @@ class AbstractModel {
      * @param xdot new model right hand side
      * @param xdot_old previous model right hand side
      * @param xB adjoint state
+     * @param xBdot right hand side of adjoint state
      */
     virtual void fdeltaqB(
         realtype* deltaqB, realtype const t, realtype const* x,
         realtype const* p, realtype const* k, realtype const* h, int ip, int ie,
-        realtype const* xdot, realtype const* xdot_old, realtype const* xB
+        realtype const* xdot, realtype const* xdot_old, realtype const* xB,
+        realtype const* xBdot
     );
 
     /**

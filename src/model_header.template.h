@@ -80,6 +80,8 @@ TPL_RZ_DEF
 TPL_STAU_DEF
 TPL_DELTAX_DEF
 TPL_DELTASX_DEF
+TPL_DELTAXB_DEF
+TPL_DELTAQB_DEF
 TPL_X_RDATA_DEF
 TPL_X_SOLVER_DEF
 TPL_TOTAL_CL_DEF
@@ -179,49 +181,13 @@ class Model_TPL_MODELNAME : public amici::Model_TPL_MODEL_TYPE_UPPER {
 
     TPL_DJZDZ_IMPL
 
-    /**
-     * @brief model specific implementation of fdeltasx
-     * @param deltaqB sensitivity update
-     * @param t current time
-     * @param x current state
-     * @param p parameter vector
-     * @param k constant vector
-     * @param h heaviside vector
-     * @param ip sensitivity index
-     * @param ie event index
-     * @param xdot new model right hand side
-     * @param xdot_old previous model right hand side
-     * @param xB adjoint state
-     */
-    void fdeltaqB(realtype *deltaqB, const realtype t,
-                  const realtype *x, const realtype *p,
-                  const realtype *k, const realtype *h, const int ip,
-                  const int ie, const realtype *xdot,
-                  const realtype *xdot_old,
-                  const realtype *xB) override {}
+    TPL_DELTAX_IMPL
 
     TPL_DELTASX_IMPL
 
-    TPL_DELTAX_IMPL
+    TPL_DELTAXB_IMPL
 
-    /**
-     * @brief model specific implementation of fdeltaxB
-     * @param deltaxB adjoint state update
-     * @param t current time
-     * @param x current state
-     * @param p parameter vector
-     * @param k constant vector
-     * @param h heaviside vector
-     * @param ie event index
-     * @param xdot new model right hand side
-     * @param xdot_old previous model right hand side
-     * @param xB current adjoint state
-     */
-    void fdeltaxB(realtype *deltaxB, const realtype t,
-                  const realtype *x, const realtype *p,
-                  const realtype *k, const realtype *h, const int ie,
-                  const realtype *xdot, const realtype *xdot_old,
-                  const realtype *xB) override {}
+    TPL_DELTAQB_IMPL
 
     TPL_DRZDP_IMPL
 

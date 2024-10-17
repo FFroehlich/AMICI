@@ -116,6 +116,8 @@ class BackwardProblem {
     AmiVector xQB_;
     /** array of state vectors at discontinuities*/
     std::vector<AmiVector> x_disc_;
+    /** array of old state vectors at discontinuities*/
+    std::vector<AmiVector> x_old_disc_;
     /** array of differential state vectors at discontinuities*/
     std::vector<AmiVector> xdot_disc_;
     /** array of old differential state vectors at discontinuities*/

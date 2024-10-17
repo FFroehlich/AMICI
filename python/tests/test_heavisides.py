@@ -3,10 +3,17 @@
 import numpy as np
 import pytest
 from util import (
+    check_trajectories_with_adjoint_sensitivities,
     check_trajectories_with_forward_sensitivities,
     check_trajectories_without_sensitivities,
     create_amici_model,
     create_sbml_model,
+)
+
+pytestmark = pytest.mark.filterwarnings(
+    # https://github.com/AMICI-dev/AMICI/issues/18
+    "ignore:Adjoint sensitivity analysis for models with discontinuous "
+    "right hand sides .*:UserWarning",
 )
 
 
@@ -66,6 +73,7 @@ def test_models(model):
     check_trajectories_with_forward_sensitivities(
         amici_model, result_expected_x, result_expected_sx
     )
+    check_trajectories_with_adjoint_sensitivities(amici_model)
 
 
 def get_model_definition(model_name):

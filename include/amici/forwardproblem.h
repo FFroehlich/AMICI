@@ -88,6 +88,14 @@ class ForwardProblem {
     }
 
     /**
+     * @brief Accessor for x_old_disc
+     * @return x_old_disc
+     */
+    std::vector<AmiVector> const& getStatesBeforeDiscontinuities() const {
+        return x_old_disc_;
+    }
+
+    /**
      * @brief Accessor for xdot_disc
      * @return xdot_disc
      */
@@ -343,6 +351,10 @@ class ForwardProblem {
     /** array of state vectors (dimension nx) for all so far encountered
      * discontinuities, extended as needed (dimension dynamic) */
     std::vector<AmiVector> x_disc_;
+
+    /** array of old state vectors (dimension nx) for all so far encountered
+     * discontinuities, extended as needed (dimension dynamic) */
+    std::vector<AmiVector> x_old_disc_;
 
     /** array of differential state vectors (dimension nx) for all so far
      * encountered discontinuities, extended as needed (dimension dynamic) */

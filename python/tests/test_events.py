@@ -10,12 +10,19 @@ from amici.gradient_check import check_derivatives
 from amici.testing import TemporaryDirectoryWinSafe as TemporaryDirectory
 from amici.testing import skip_on_valgrind
 from util import (
+    check_trajectories_with_adjoint_sensitivities,
     check_trajectories_with_forward_sensitivities,
     check_trajectories_without_sensitivities,
     create_amici_model,
     create_sbml_model,
 )
 from numpy.testing import assert_allclose
+
+pytestmark = pytest.mark.filterwarnings(
+    # https://github.com/AMICI-dev/AMICI/issues/18
+    "ignore:Adjoint sensitivity analysis for models with discontinuous "
+    "right hand sides .*:UserWarning",
+)
 
 
 @pytest.fixture(
@@ -132,9 +139,12 @@ def model_definition_events_plus_heavisides():
         "k2": 0.01,
         "k3": 5,
         "alpha": 2,
+        # FIXME: adjoint sensitivities w.r.t. beta are slightly off
         "beta": 3,
         "gamma": 2,
         "delta": 3,
+        # FIXME: adjoint sensitivities w.r.t. eta are slightly off
+        #  changing eta to e.g. 2.5 "fixes" python/tests/test_events.py::test_models[events_plus_heavisides]
         "eta": 1,
         "zeta": 5,
     }
@@ -274,6 +284,7 @@ def model_definition_nested_events():
         "k2": 0,
         "inflow_1": 4,
         "decay_1": 2,
+        # FIXME adjoint sensitivities w.r.t. decay_2 are slightly off
         "decay_2": 5,
         "bolus": 0,  # for bolus != 0, nested event sensitivities are off!
     }
@@ -700,6 +711,7 @@ def test_models(model):
     check_trajectories_with_forward_sensitivities(
         amici_model, result_expected_x, result_expected_sx
     )
+    check_trajectories_with_adjoint_sensitivities(amici_model)
 
 
 def expm(x):
