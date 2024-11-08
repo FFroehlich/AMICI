@@ -773,3 +773,39 @@ def test_constraints():
                 amici_solver.getAbsoluteTolerance(),
             )
         )
+
+
+def test_reserved_symbols():
+    """Test handling of reserved one-letter names."""
+    from amici.antimony_import import antimony2amici
+
+    ant_model = """
+    model test_non_negative_species
+        t = 0.1
+        x = 0.2
+        y = 0.3
+        w = 0.4
+        h = 0.5
+        p = 0.6
+        k = 0.7
+        x' = k + x + p + y + w + h + t
+    end
+    """
+    module_name = "test_reserved_symbols"
+    with TemporaryDirectory(prefix=module_name) as outdir:
+        antimony2amici(
+            ant_model,
+            model_name=module_name,
+            output_dir=outdir,
+            compute_conservation_laws=False,
+        )
+        # ensure it compiled successfully and can be imported
+        model_module = amici.import_model_module(
+            module_name=module_name, module_path=outdir
+        )
+        model = model_module.get_model()
+        ids = list(model.getParameterIds())
+        ids.extend(model.getStateIds())
+        # all symbols should be present with their original IDs
+        for symbol in "txywhpk":
+            assert symbol in ids

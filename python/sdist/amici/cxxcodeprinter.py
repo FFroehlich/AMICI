@@ -30,6 +30,7 @@ class AmiciCxxCodePrinter(CXX11CodePrinter):
     """
 
     optimizations: Iterable[Optimization] = ()
+    RESERVED_SYMBOLS = ["x", "k", "p", "y", "w", "h", "t", "AMICI_EMPTY_BOLUS"]
 
     def __init__(self):
         """Create code printer"""
@@ -66,6 +67,12 @@ class AmiciCxxCodePrinter(CXX11CodePrinter):
             raise ValueError(
                 f'Encountered unsupported function in expression "{expr}"'
             ) from e
+
+    def _print_Symbol(self, expr):
+        name = super()._print_Symbol(expr)
+        if name in self.RESERVED_SYMBOLS:
+            return f"amici_{name}"
+        return name
 
     def _print_min_max(self, expr, cpp_fun: str, sympy_fun):
         # C++ doesn't like mixing int and double for arguments for min/max,

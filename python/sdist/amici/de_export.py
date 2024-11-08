@@ -394,6 +394,12 @@ class DEExporter:
         lines = []
         for index, symbol in enumerate(symbols):
             symbol_name = strip_pysb(symbol)
+            # symbol_name is a mix of symbols and strings
+            symbol_name = self._code_printer._print_Symbol(
+                sp.Symbol(symbol_name)
+                if isinstance(symbol_name, str)
+                else symbol_name
+            )
             if str(symbol) == "0":
                 continue
             if str(symbol_name) == "":
@@ -1221,7 +1227,7 @@ class DEExporter:
             Template initializer list of ids
         """
         return "\n".join(
-            f'"{self._code_printer.doprint(symbol)}", // {name}[{idx}]'
+            f'"{symbol}", // {name}[{idx}]'
             for idx, symbol in enumerate(self.model.sym(name))
         )
 

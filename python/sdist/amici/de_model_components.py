@@ -7,7 +7,6 @@ from typing import SupportsFloat
 import sympy as sp
 
 from .import_utils import (
-    RESERVED_SYMBOLS,
     ObservableTransformation,
     amici_time_symbol,
     cast_to_sym,
@@ -66,13 +65,6 @@ class ModelQuantity:
                 f"identifier must be sympy.Symbol, was " f"{type(identifier)}"
             )
 
-        if str(identifier) in RESERVED_SYMBOLS or (
-            hasattr(identifier, "name") and identifier.name in RESERVED_SYMBOLS
-        ):
-            raise ValueError(
-                f'Cannot add model quantity with name "{name}", '
-                f"please rename."
-            )
         self._identifier: sp.Symbol = identifier
 
         if not isinstance(name, str):
