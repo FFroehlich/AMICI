@@ -72,9 +72,10 @@ href="https://doi.org/10.1093/nar/gkae123">https://doi.org/10.1093/nar/gkae123</
 </div>
 <div id="ref-LakrisenkoPat2024" class="csl-entry" role="listitem">
 Lakrisenko, Polina, Dilan Pathirana, Daniel Weindl, and Jan Hasenauer.
-2024. <span>“Exploration of Methods for Computing Sensitivities in ODE
-Models at Dynamic and Steady States.”</span> <a
-href="https://arxiv.org/abs/2405.16524">https://arxiv.org/abs/2405.16524</a>.
+2024. <span>“Benchmarking Methods for Computing Local Sensitivities in
+Ordinary Differential Equation Models at Dynamic and Steady
+States.”</span> <em>PLOS ONE</em> 19 (10): 1–19. <a
+href="https://doi.org/10.1371/journal.pone.0312148">https://doi.org/10.1371/journal.pone.0312148</a>.
 </div>
 <div id="ref-LangPen2024" class="csl-entry" role="listitem">
 Lang, Paul F., David R. Penas, Julio R. Banga, Daniel Weindl, and Bela

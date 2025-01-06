@@ -1312,17 +1312,6 @@ Clonal hematopoiesis of indeterminate potential (CHIP) describes the age-related
   publisher        = {Springer Science and Business Media LLC},
 }
 
-@Misc{LakrisenkoPat2024,
-  author           = {Polina Lakrisenko and Dilan Pathirana and Daniel Weindl and Jan Hasenauer},
-  title            = {Exploration of methods for computing sensitivities in ODE models at dynamic and steady states},
-  year             = {2024},
-  archiveprefix    = {arXiv},
-  creationdate     = {2024-05-30T09:48:00},
-  eprint           = {2405.16524},
-  modificationdate = {2024-05-30T09:48:00},
-  primaryclass     = {q-bio.QM},
-}
-
 @PhdThesis{Mutsuddy2024,
   author           = {Mutsuddy, Arnab},
   school           = {Clemson University},
@@ -1433,6 +1422,23 @@ Clonal hematopoiesis of indeterminate potential (CHIP) describes the age-related
   doi              = {10.1038/s41419-024-07134-2},
   modificationdate = {2024-10-17T16:28:08},
   publisher        = {Springer Science and Business Media LLC},
+}
+
+@Article{LakrisenkoPat2024,
+  author           = {Lakrisenko, Polina and Pathirana, Dilan and Weindl, Daniel and Hasenauer, Jan},
+  journal          = {PLOS ONE},
+  title            = {Benchmarking methods for computing local sensitivities in ordinary differential equation models at dynamic and steady states},
+  year             = {2024},
+  month            = {10},
+  number           = {10},
+  pages            = {1-19},
+  volume           = {19},
+  abstract         = {Estimating parameters of dynamic models from experimental data is a challenging, and often computationally-demanding task. It requires a large number of model simulations and objective function gradient computations, if gradient-based optimization is used. In many cases, steady-state computation is a part of model simulation, either due to steady-state data or an assumption that the system is at steady state at the initial time point. Various methods are available for steady-state and gradient computation. Yet, the most efficient pair of methods (one for steady states, one for gradients) for a particular model is often not clear. In order to facilitate the selection of methods, we explore six method pairs for computing the steady state and sensitivities at steady state using six real-world problems. The method pairs involve numerical integration or Newton’s method to compute the steady-state, and—for both forward and adjoint sensitivity analysis—numerical integration or a tailored method to compute the sensitivities at steady-state. Our evaluation shows that all method pairs provide accurate steady-state and gradient values, and that the two method pairs that combine numerical integration for the steady-state with a tailored method for the sensitivities at steady-state were the most robust, and amongst the most computationally-efficient. We also observed that while Newton’s method for steady-state computation yields a substantial speedup compared to numerical integration, it may lead to a large number of simulation failures. Overall, our study provides a concise overview across current methods for computing sensitivities at steady state. While our study shows that there is no universally-best method pair, it also provides guidance to modelers in choosing the right methods for a problem at hand.},
+  creationdate     = {2025-01-06T14:49:28},
+  doi              = {10.1371/journal.pone.0312148},
+  modificationdate = {2025-01-06T14:49:48},
+  publisher        = {Public Library of Science},
+  url              = {https://doi.org/10.1371/journal.pone.0312148},
 }
 
 @Comment{jabref-meta: databaseType:bibtex;}
