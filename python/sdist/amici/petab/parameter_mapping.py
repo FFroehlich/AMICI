@@ -352,7 +352,11 @@ def create_parameter_mapping(
     if petab_problem.model.type_id == MODEL_TYPE_SBML:
         import libsbml
 
-        if petab_problem.sbml_document:
+        # v1 guard
+        if (
+            isinstance(petab_problem, petab.Problem)
+            and petab_problem.sbml_document
+        ):
             converter_config = (
                 libsbml.SBMLLocalParameterConverter().getDefaultProperties()
             )

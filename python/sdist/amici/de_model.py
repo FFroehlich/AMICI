@@ -28,10 +28,12 @@ from .de_model_components import (
     AlgebraicEquation,
     Observable,
     EventObservable,
+    Sigma,
     SigmaY,
     SigmaZ,
     Parameter,
     Constant,
+    LogLikelihood,
     LogLikelihoodY,
     LogLikelihoodZ,
     LogLikelihoodRZ,
@@ -199,6 +201,7 @@ class DEModel:
         verbose: bool | int | None = False,
         simplify: Callable | None = _default_simplify,
         cache_simplify: bool = False,
+        hybridisation: bool = False,
     ):
         """
         Create a new DEModel instance.
@@ -2305,3 +2308,137 @@ class DEModel:
                 dxdt = dxdt.subs(heaviside_sympy, heaviside_amici)
 
         return dxdt
+
+    @property
+    def _components(self) -> list[ModelQuantity]:
+        """
+        Returns the components of the model
+
+        :return:
+            components of the model
+        """
+        return (
+            self._algebraic_states
+            + self._algebraic_equations
+            + self._conservation_laws
+            + self._constants
+            + self._differential_states
+            + self._event_observables
+            + self._events
+            + self._expressions
+            + self._log_likelihood_ys
+            + self._log_likelihood_zs
+            + self._log_likelihood_rzs
+            + self._observables
+            + self._parameters
+            + self._sigma_ys
+            + self._sigma_zs
+            + self._splines
+        )
+
+    def _process_hybridization(self, hybridization: dict) -> None:
+        """
+        Parses the hybridisation information and updates the model accordingly
+
+        :param hybridization:
+            hybridization information
+        """
+        added_expressions = False
+        for net_id, net in hybridization.items():
+            if not (
+                net["hybridization"]["output"] == "ode"
+                or net["hybridization"]["input"] == "ode"
+            ):
+                continue  # do not integrate into ODEs, handle in amici.jax.petab
+            inputs = [
+                comp
+                for comp in self._components
+                if str(comp.get_id()) in net["input_vars"]
+            ]
+            # sort inputs by order in input_vars
+            inputs = sorted(
+                inputs,
+                key=lambda comp: net["input_vars"].index(str(comp.get_id())),
+            )
+            if len(inputs) != len(net["input_vars"]):
+                raise ValueError(
+                    f"Could not find all input variables for neural network {net_id}"
+                )
+            for inp in inputs:
+                if isinstance(
+                    inp,
+                    Sigma
+                    | LogLikelihood
+                    | Event
+                    | ConservationLaw
+                    | Observable,
+                ):
+                    raise NotImplementedError(
+                        f"{inp.get_name()} ({type(inp)}) is not supported as neural network input."
+                    )
+
+            outputs = {
+                out_var: comp
+                for comp in self._components
+                if (out_var := str(comp.get_id())) in net["output_vars"]
+                # TODO: SYNTAX NEEDS to CHANGE
+                or (out_var := str(comp.get_id()) + "_dot")
+                in net["output_vars"]
+            }
+            if len(outputs.keys()) != len(net["output_vars"]):
+                raise ValueError(
+                    f"Could not find all output variables for neural network {net_id}"
+                )
+            for iout, (out_var, comp) in enumerate(outputs.items()):
+                # remove output from model components
+                if isinstance(comp, Parameter):
+                    self._parameters.remove(comp)
+                elif isinstance(comp, Expression):
+                    self._expressions.remove(comp)
+                elif isinstance(comp, DifferentialState):
+                    pass
+                else:
+                    raise NotImplementedError(
+                        f"{comp.get_name()} ({type(comp)}) is not supported as neural network output."
+                    )
+
+                # generate dummy Function
+                out_val = sp.Function(net_id)(
+                    *[input.get_id() for input in inputs], iout
+                )
+
+                # add to the model
+                if isinstance(comp, DifferentialState):
+                    ix = self._differential_states.index(comp)
+                    # TODO: SYNTAX NEEDS to CHANGE
+                    if out_var.endswith("_dot"):
+                        self._differential_states[ix].set_dt(out_val)
+                    else:
+                        self._differential_states[ix].set_val(out_val)
+                else:
+                    self.add_component(
+                        Expression(
+                            identifier=comp.get_id(),
+                            name=net_id,
+                            value=out_val,
+                        )
+                    )
+                    added_expressions = True
+
+        if added_expressions:
+            # toposort expressions
+            w_sorted = toposort_symbols(
+                dict(
+                    zip(
+                        self.sym("w"),
+                        self.eq("w"),
+                        strict=True,
+                    )
+                )
+            )
+            old_syms = tuple(self._syms["w"])
+            topo_expr_syms = tuple(w_sorted.keys())
+            new_order = [old_syms.index(s) for s in topo_expr_syms]
+            self._expressions = [self._expressions[i] for i in new_order]
+            self._syms["w"] = sp.Matrix(topo_expr_syms)
+            self._eqs["w"] = sp.Matrix(list(w_sorted.values()))

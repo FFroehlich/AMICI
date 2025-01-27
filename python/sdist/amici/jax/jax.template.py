@@ -1,9 +1,13 @@
 # ruff: noqa: F401, F821, F841
 import jax.numpy as jnp
+import jax.random as jr
 from interpax import interp1d
 from pathlib import Path
 
 from amici.jax.model import JAXModel, safe_log, safe_div
+from amici import _module_from_path
+
+TPL_NET_IMPORTS
 
 
 class JAXModel_TPL_MODEL_NAME(JAXModel):
@@ -11,6 +15,8 @@ class JAXModel_TPL_MODEL_NAME(JAXModel):
 
     def __init__(self):
         self.jax_py_file = Path(__file__).resolve()
+        self.nns = {TPL_NETS}
+
         super().__init__()
 
     def _xdot(self, t, x, args):

@@ -205,6 +205,7 @@ def import_model_sbml(
     non_estimated_parameters_as_constants=True,
     output_parameter_defaults: dict[str, float] | None = None,
     discard_sbml_annotations: bool = False,
+    hybridization: dict = None,
     jax: bool = False,
     **kwargs,
 ) -> amici.SbmlImporter:
@@ -380,10 +381,15 @@ def import_model_sbml(
             sigmas=sigmas,
             noise_distributions=noise_distrs,
             verbose=verbose,
+            hybridization=hybridization,
             **kwargs,
         )
         return sbml_importer
     else:
+        if hybridization:
+            raise NotImplementedError(
+                "Hybridization is currently only supported for JAX models."
+            )
         sbml_importer.sbml2amici(
             model_name=model_name,
             output_dir=model_output_dir,

@@ -46,6 +46,7 @@ class JAXModel(eqx.Module):
     MODEL_API_VERSION = "0.0.2"
     api_version: str
     jax_py_file: Path
+    nns: dict
 
     def __init__(self):
         if self.api_version != self.MODEL_API_VERSION:

@@ -1,0 +1,3 @@
+[submodule "tests/sciml/testsuite"]
+	path = tests/sciml/testsuite
+	url = https://github.com/sebapersson/petab_sciml

@@ -16,6 +16,7 @@ from amici.jax.petab import (
     ReturnValue,
 )
 from amici.jax.model import JAXModel
+from amici.jax.nn import generate_equinox
 
 warn(
     "The JAX module is experimental and the API may change in the future.",
@@ -26,6 +27,7 @@ warn(
 __all__ = [
     "JAXModel",
     "JAXProblem",
+    "generate_equinox",
     "run_simulations",
     "petab_simulate",
     "ReturnValue",

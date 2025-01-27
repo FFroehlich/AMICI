@@ -1,0 +1,87 @@
+name: PEtab
+on:
+  push:
+    branches:
+      - develop
+      - master
+  pull_request:
+    branches:
+      - master
+      - develop
+  merge_group:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: PEtab SciML Testsuite
+
+    runs-on: ubuntu-latest
+
+    env:
+      ENABLE_GCOV_COVERAGE: TRUE
+
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+
+    steps:
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 20
+
+      - name: Install apt dependencies
+        uses: ./.github/actions/install-apt-dependencies
+
+      # install dependencies
+      - name: apt
+        run: |
+          sudo apt-get update \
+            && sudo apt-get install -y python3-venv
+
+      - run: |
+          echo "${HOME}/.local/bin/" >> $GITHUB_PATH
+
+      # install AMICI
+      - name: Install python package
+        run: scripts/installAmiciSource.sh
+
+      - name: Install petab
+        run: |
+          source ./venv/bin/activate \
+            && pip3 install wheel pytest shyaml pytest-cov
+
+      # retrieve test models
+      - name: Download and install PEtab SciML test suite
+        run: |
+          git clone --depth 1 --branch main \
+            https://github.com/sebapersson/petab_sciml.git \
+            && export SCIML_TESTSUITE="$(pwd)/petab_sciml" \
+            && source venv/bin/activate \
+            && python -m pip install -e $SCIML_TESTSUITE/src/python
+
+
+      - name: Install petab
+        run: |
+          source ./venv/bin/activate \
+            && python3 -m pip uninstall -y petab \
+            && python3 -m pip install git+https://github.com/petab-dev/libpetab-python.git@develop \
+
+      - name: Run PEtab SciML testsuite
+        run: |
+          source ./venv/bin/activate \
+            && pytest --cov-report=xml:coverage.xml \
+              --cov=./ tests/sciml/test_sciml.py
+
+      - name: Codecov
+        if: github.event_name == 'pull_request' || github.repository_owner == 'AMICI-dev'
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: coverage.xml
+          flags: petab
+          fail_ci_if_error: true

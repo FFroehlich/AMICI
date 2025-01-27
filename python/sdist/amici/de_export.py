@@ -169,6 +169,7 @@ class DEExporter:
         allow_reinit_fixpar_initcond: bool | None = True,
         generate_sensitivity_code: bool | None = True,
         model_name: str | None = "model",
+        hybridisation: dict | None = None,
     ):
         """
         Generate AMICI C++ files for the DE provided to the constructor.
@@ -232,6 +233,7 @@ class DEExporter:
         self.allow_reinit_fixpar_initcond: bool = allow_reinit_fixpar_initcond
         self._build_hints = set()
         self.generate_sensitivity_code: bool = generate_sensitivity_code
+        self.hybridisation = hybridisation
 
     @log_execution_time("generating cpp code", logger)
     def generate_model_code(self) -> None:

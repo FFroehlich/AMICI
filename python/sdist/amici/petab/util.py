@@ -28,7 +28,13 @@ def get_states_in_condition_table(
 
     species_check_funs = {
         MODEL_TYPE_SBML: lambda x: _element_is_sbml_state(
-            petab_problem.sbml_model, x
+            petab_problem.sbml_model,
+            x,  # v1
+        )
+        if isinstance(petab_problem, petab.Problem)
+        else lambda x: _element_is_sbml_state(
+            petab_problem.model.sbml_model,
+            x,  # v2
         ),
         MODEL_TYPE_PYSB: lambda x: _element_is_pysb_pattern(
             petab_problem.model.model, x

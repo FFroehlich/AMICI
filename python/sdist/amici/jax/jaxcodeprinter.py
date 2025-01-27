@@ -36,6 +36,9 @@ class AmiciJaxCodePrinter(NumPyPrinter):
             return super()._print_Mul(expr)
         return f"safe_div({self.doprint(numer)}, {self.doprint(denom)})"
 
+    def _print_Function(self, expr):
+        return f"self.nns['{expr.func.__name__}'].forward(jnp.array([{', '.join(self.doprint(a) for a in expr.args[:-1])}]))[{expr.args[-1]}]"
+
     def _get_sym_lines(
         self,
         symbols: sp.Matrix | Iterable[str],

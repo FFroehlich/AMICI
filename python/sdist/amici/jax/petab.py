@@ -91,6 +91,7 @@ class JAXProblem(eqx.Module):
             np.ndarray,
         ],
     ]
+    _inputs: dict[str, dict[str, np.ndarray]]
     _petab_measurement_indices: dict[tuple[str, ...], tuple[int, ...]]
     _petab_problem: petab.Problem
 
@@ -103,14 +104,14 @@ class JAXProblem(eqx.Module):
         :param petab_problem:
             PEtab problem to simulate.
         """
-        self.model = model
         scs = petab_problem.get_simulation_conditions_from_measurement_df()
         self._petab_problem = petab_problem
+        self.parameters, self.model = self._get_nominal_parameter_values(model)
         self._parameter_mappings = self._get_parameter_mappings(scs)
+        self._inputs = self._get_inputs()
         self._measurements, self._petab_measurement_indices = (
             self._get_measurements(scs)
         )
-        self.parameters = self._get_nominal_parameter_values()
 
     def save(self, directory: Path):
         """
@@ -258,13 +259,71 @@ class JAXProblem(eqx.Module):
         )
         return tuple(tuple(row) for _, row in simulation_conditions.iterrows())
 
-    def _get_nominal_parameter_values(self) -> jt.Float[jt.Array, "np"]:
+    def _get_nominal_parameter_values(
+        self, model: JAXModel
+    ) -> tuple[jt.Float[jt.Array, "np"], JAXModel]:
         """
         Get the nominal parameter values for the model based on the nominal values in the PEtab problem.
+        Also set nominal values in the model (where applicable).
 
         :return:
-            jax array with nominal parameter values
+            jax array with nominal parameter values and model with nominal parameter values set.
         """
+        # initialize everything with zeros
+        model_pars = {
+            net_id: {
+                layer_id: {
+                    attribute: jnp.zeros_like(getattr(layer, attribute))
+                    for attribute in ["weight", "bias"]
+                    if hasattr(layer, attribute)
+                }
+                for layer_id, layer in nn.layers.items()
+            }
+            for net_id, nn in model.nns.items()
+        }
+        # extract nominal values from petab problem
+        for pname, row in self._petab_problem.parameter_df.iterrows():
+            if (net := pname.split(".")[0]) in model.nns:
+                to_set = []
+                nn = model_pars[net]
+                if len(pname.split(".")) > 1:
+                    layer = nn[pname.split(".")[1]]
+                    if len(pname.split(".")) > 2:
+                        to_set.append(
+                            (pname.split(".")[1], pname.split(".")[2])
+                        )
+                    else:
+                        to_set.extend(
+                            [
+                                (pname.split(".")[1], attribute)
+                                for attribute in layer.keys()
+                            ]
+                        )
+                else:
+                    to_set.extend(
+                        [
+                            (layer_name, attribute)
+                            for layer_name, layer in nn.items()
+                            for attribute in layer.keys()
+                        ]
+                    )
+
+                for layer, attribute in to_set:
+                    nn[layer][attribute] = row[
+                        petab.NOMINAL_VALUE
+                    ] * jnp.ones_like(nn[layer][attribute])
+
+        # set values in model
+        for net_id in model_pars:
+            for layer_id in model_pars[net_id]:
+                for attribute in model_pars[net_id][layer_id]:
+                    model = eqx.tree_at(
+                        lambda model: getattr(
+                            model.nns[net_id].layers[layer_id], attribute
+                        ),
+                        model,
+                        model_pars[net_id][layer_id][attribute],
+                    )
         return jnp.array(
             [
                 petab.scale(
@@ -277,7 +336,32 @@ class JAXProblem(eqx.Module):
                 )
                 for pval in self.parameter_ids
             ]
-        )
+        ), model
+
+    def _get_inputs(self):
+        if self._petab_problem.mapping_df is None:
+            return {}
+        inputs = {net: {} for net in self.model.nns.keys()}
+        for petab_id, row in self._petab_problem.mapping_df.iterrows():
+            if (filepath := Path(petab_id)).is_file():
+                data_flat = pd.read_csv(filepath, sep="\t").sort_values(
+                    by="ix"
+                )
+                shape = tuple(
+                    np.stack(
+                        data_flat["ix"]
+                        .astype(str)
+                        .str.split(";")
+                        .apply(np.array)
+                    )
+                    .astype(int)
+                    .max(axis=0)
+                    + 1
+                )
+                inputs[row["netId"]][row[petab.MODEL_ENTITY_ID]] = data_flat[
+                    "value"
+                ].values.reshape(shape)
+        return inputs
 
     @property
     def parameter_ids(self) -> list[str]:
@@ -289,6 +373,23 @@ class JAXProblem(eqx.Module):
         """
         return self._petab_problem.parameter_df[
             self._petab_problem.parameter_df[petab.ESTIMATE] == 1
+        ].index.tolist()
+
+    @property
+    def nn_output_ids(self) -> list[str]:
+        """
+        Parameter ids that are estimated in the PEtab problem. Same ordering as values in :attr:`parameters`.
+
+        :return:
+            PEtab parameter ids
+        """
+        if self._petab_problem.mapping_df is None:
+            return []
+        return self._petab_problem.mapping_df[
+            self._petab_problem.mapping_df[petab.MODEL_ENTITY_ID]
+            .str.split(".")
+            .str[1]
+            .str.startswith("output")
         ].index.tolist()
 
     def get_petab_parameter_by_id(self, name: str) -> jnp.float_:
@@ -319,7 +420,52 @@ class JAXProblem(eqx.Module):
             [jax_unscale(pval, scale) for pval, scale in zip(p, scales)]
         )
 
-    def load_parameters(
+    def _eval_nn(self, output_par: str):
+        net_id = self._petab_problem.mapping_df.loc[
+            output_par, petab.MODEL_ENTITY_ID
+        ].split(".")[0]
+        nn = self.model.nns[net_id]
+
+        model_id_map = (
+            self._petab_problem.mapping_df[
+                self._petab_problem.mapping_df[petab.MODEL_ENTITY_ID]
+                .str.split(".")
+                .str[0]
+                == net_id
+            ]
+            .reset_index()
+            .set_index(petab.MODEL_ENTITY_ID)[petab.PETAB_ENTITY_ID]
+            .to_dict()
+        )
+
+        net_input = jnp.array(
+            [
+                jax.lax.stop_gradient(self._inputs[net_id][model_id])
+                if model_id in self._inputs[net_id]
+                else self.get_petab_parameter_by_id(petab_id)
+                if petab_id in self.parameter_ids
+                else self._petab_problem.parameter_df.loc[
+                    petab_id, petab.NOMINAL_VALUE
+                ]
+                for model_id, petab_id in model_id_map.items()
+                if model_id.split(".")[1].startswith("input")
+            ]
+        )
+        return nn.forward(net_input).squeeze()
+
+    def _map_model_parameter_value(
+        self,
+        mapping: ParameterMappingForCondition,
+        pname: str,
+    ) -> jt.Float[jt.Scalar, ""] | float:  # noqa: F722
+        if pname in self.nn_output_ids:
+            return self._eval_nn(pname)
+        pval = mapping.map_sim_var[pname]
+        if isinstance(pval, Number):
+            return pval
+        return self.get_petab_parameter_by_id(pval)
+
+    def load_model_parameters(
         self, simulation_condition: str
     ) -> jt.Float[jt.Array, "np"]:
         """
@@ -331,17 +477,19 @@ class JAXProblem(eqx.Module):
             Parameters for the simulation condition.
         """
         mapping = self._parameter_mappings[simulation_condition]
+
         p = jnp.array(
             [
-                pval
-                if isinstance(pval := mapping.map_sim_var[pname], Number)
-                else self.get_petab_parameter_by_id(pval)
+                self._map_model_parameter_value(mapping, pname)
                 for pname in self.model.parameter_ids
             ]
         )
         pscale = tuple(
             [
-                mapping.scale_map_sim_var[pname]
+                petab.LIN
+                if self._petab_problem.mapping_df is not None
+                and pname in self._petab_problem.mapping_df.index
+                else mapping.scale_map_sim_var[pname]
                 for pname in self.model.parameter_ids
             ]
         )
@@ -362,6 +510,9 @@ class JAXProblem(eqx.Module):
         :return:
             True if state needs reinitialisation, False otherwise
         """
+        if state_id in self.nn_output_ids:
+            return True
+
         if state_id not in self._petab_problem.condition_df:
             return False
         xval = self._petab_problem.condition_df.loc[
@@ -389,6 +540,9 @@ class JAXProblem(eqx.Module):
         :return:
             reinitialisation value for the state
         """
+        if state_id in self.nn_output_ids:
+            return self._eval_nn(state_id)
+
         if state_id not in self._petab_problem.condition_df:
             # no reinitialisation, return dummy value
             return 0.0
@@ -433,6 +587,7 @@ class JAXProblem(eqx.Module):
         """
         if not any(
             x_id in self._petab_problem.condition_df
+            or x_id in self.nn_output_ids
             for x_id in self.model.state_ids
         ):
             return jnp.array([]), jnp.array([])
@@ -495,7 +650,7 @@ class JAXProblem(eqx.Module):
         ts_dyn, ts_posteq, my, iys, iy_trafos = self._measurements[
             simulation_condition
         ]
-        p = self.load_parameters(simulation_condition[0])
+        p = self.load_model_parameters(simulation_condition[0])
         mask_reinit, x_reinit = self.load_reinitialisation(
             simulation_condition[0], p
         )
@@ -543,7 +698,7 @@ class JAXProblem(eqx.Module):
         :return:
             Pre-equilibration state
         """
-        p = self.load_parameters(simulation_condition)
+        p = self.load_model_parameters(simulation_condition)
         mask_reinit, x_reinit = self.load_reinitialisation(
             simulation_condition, p
         )

@@ -207,3 +207,4 @@ debug/*
 tests/benchmark-models/cache_fiddy/*
 venv/*
 .coverage
+tests/sciml/models/*
