@@ -26,14 +26,15 @@ def get_states_in_condition_table(
     if petab_problem.model.type_id not in (MODEL_TYPE_SBML, MODEL_TYPE_PYSB):
         raise NotImplementedError()
 
-    species_check_funs = {
+    species_check_fun = {
         MODEL_TYPE_SBML: lambda x: _element_is_sbml_state(
             petab_problem.sbml_model, x
         ),
         MODEL_TYPE_PYSB: lambda x: _element_is_pysb_pattern(
             petab_problem.model.model, x
         ),
-    }
+    }[petab_problem.model.type_id]
+
     states = {
         resolve_mapping(petab_problem.mapping_df, col): (None, None)
         if condition is None
@@ -48,9 +49,7 @@ def get_states_in_condition_table(
             else None,
         )
         for col in petab_problem.condition_df.columns
-        if species_check_funs[petab_problem.model.type_id](
-            resolve_mapping(petab_problem.mapping_df, col)
-        )
+        if species_check_fun(resolve_mapping(petab_problem.mapping_df, col))
     }
 
     if petab_problem.model.type_id == MODEL_TYPE_PYSB:
