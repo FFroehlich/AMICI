@@ -96,9 +96,14 @@ class ReturnData : public ModelDimensions {
         Model& model, Solver const& solver, ExpData const* edata
     );
     /**
-     * @brief Arbitrary (not necessarily unique) identifier.
+     * @brief Unique identifier.
      */
     std::string id;
+
+    /**
+     * @brief Unique Identifier of the ExpData to use for initialization.
+     */
+    std::string initialization_id;
 
     /**
      * timepoints (shape `nt`)
