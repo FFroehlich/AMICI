@@ -1312,17 +1312,6 @@ Clonal hematopoiesis of indeterminate potential (CHIP) describes the age-related
   publisher        = {Springer Science and Business Media LLC},
 }
 
-@Misc{LakrisenkoPat2024,
-  author           = {Polina Lakrisenko and Dilan Pathirana and Daniel Weindl and Jan Hasenauer},
-  title            = {Exploration of methods for computing sensitivities in ODE models at dynamic and steady states},
-  year             = {2024},
-  archiveprefix    = {arXiv},
-  creationdate     = {2024-05-30T09:48:00},
-  eprint           = {2405.16524},
-  modificationdate = {2024-05-30T09:48:00},
-  primaryclass     = {q-bio.QM},
-}
-
 @PhdThesis{Mutsuddy2024,
   author           = {Mutsuddy, Arnab},
   school           = {Clemson University},
@@ -1433,6 +1422,38 @@ Clonal hematopoiesis of indeterminate potential (CHIP) describes the age-related
   doi              = {10.1038/s41419-024-07134-2},
   modificationdate = {2024-10-17T16:28:08},
   publisher        = {Springer Science and Business Media LLC},
+}
+
+@Article{LakrisenkoPat2024,
+  author           = {Lakrisenko, Polina and Pathirana, Dilan and Weindl, Daniel and Hasenauer, Jan},
+  journal          = {PLOS ONE},
+  title            = {Benchmarking methods for computing local sensitivities in ordinary differential equation models at dynamic and steady states},
+  year             = {2024},
+  month            = {10},
+  number           = {10},
+  pages            = {1-19},
+  volume           = {19},
+  abstract         = {Estimating parameters of dynamic models from experimental data is a challenging, and often computationally-demanding task. It requires a large number of model simulations and objective function gradient computations, if gradient-based optimization is used. In many cases, steady-state computation is a part of model simulation, either due to steady-state data or an assumption that the system is at steady state at the initial time point. Various methods are available for steady-state and gradient computation. Yet, the most efficient pair of methods (one for steady states, one for gradients) for a particular model is often not clear. In order to facilitate the selection of methods, we explore six method pairs for computing the steady state and sensitivities at steady state using six real-world problems. The method pairs involve numerical integration or Newton’s method to compute the steady-state, and—for both forward and adjoint sensitivity analysis—numerical integration or a tailored method to compute the sensitivities at steady-state. Our evaluation shows that all method pairs provide accurate steady-state and gradient values, and that the two method pairs that combine numerical integration for the steady-state with a tailored method for the sensitivities at steady-state were the most robust, and amongst the most computationally-efficient. We also observed that while Newton’s method for steady-state computation yields a substantial speedup compared to numerical integration, it may lead to a large number of simulation failures. Overall, our study provides a concise overview across current methods for computing sensitivities at steady state. While our study shows that there is no universally-best method pair, it also provides guidance to modelers in choosing the right methods for a problem at hand.},
+  creationdate     = {2025-01-06T14:49:28},
+  doi              = {10.1371/journal.pone.0312148},
+  modificationdate = {2025-01-06T14:49:48},
+  publisher        = {Public Library of Science},
+  url              = {https://doi.org/10.1371/journal.pone.0312148},
+}
+
+@Article{SmithMal2025,
+  author           = {Smith, Lucian and Malik-Sheriff, Rahuman S. and Nguyen, Tung V. N. and Hermjakob, Henning and Karr, Jonathan and Shaikh, Bilal and Drescher, Logan and Moraru, Ion I. and Schaff, James C. and Agmon, Eran and Patrie, Alexander A. and Blinov, Michael L. and Hellerstein, Joseph L. and May, Elebeoba E. and Nickerson, David P. and Gennari, John H. and Sauro, Herbert M.},
+  journal          = {bioRxiv},
+  title            = {Using {SED-ML} for reproducible curation: Verifying {BioModels} across multiple simulation engines},
+  year             = {2025},
+  abstract         = {The BioModels Repository contains over 1000 manually curated mechanistic models drawn from published literature, most of which are encoded in the Systems Biology Markup Language (SBML). This community-based standard formally specifies each model, but does not describe the computational experimental conditions to run a simulation. Therefore, it can be challenging to reproduce any given figure or result from a publication with an SBML model alone. The Simulation Experiment Description Markup Language (SED-ML) provides a solution: a standard way to specify exactly how to run a specific experiment that corresponds to a specific figure or result. BioModels was established years before SED-ML, and both systems evolved over time, both in content and acceptance. Hence, only about half of the entries in BioModels contained SED-ML files, and these files reflected the version of SED-ML that was available at the time. Additionally, almost all of these SED-ML files had at least one minor mistake that made them invalid. To make these models and their results more reproducible, we report here on our work updating, correcting and providing new SED-ML files for 1055 curated mechanistic models in BioModels. In addition, because SED-ML is implementation-independent, it can be used for verification, demonstrating that results hold across multiple simulation engines. Here, we use a wrapper architecture for interpreting SED-ML, and report verification results across five different ODE-based biosimulation engines. Our work with SED-ML and the BioModels collection aims to improve the utility of these models by making them more reproducible and credible.Author summary Reproducing computationally-derived scientific results seems like it should be straightforward, but is often elusive. Code is lost, file formats change, and knowledge of what was done is only partially recorded and/or forgotten. Model repositories such as BioModels address this failing in the Systems Biology domain by encoding models in a standard format that can reproduce a figure from the paper from which it was drawn. Here, we delved into the BioModels repository to ensure that every curated model additionally contained instructions on what to do with that model, and then tested those instructions on a variety of simulation platforms. Not only did this improve the BioModels repository itself, but also improved the infrastructure necessary to run these validation comparisons in the future.Author contributions LS: Writing, Conceptualization, Data Curation, Investigation, Methodology, Project Administration, Software, Validation. RMS: Reading, Writing, Data Curation, Methodology TN: Reading, Data Curation, Methodology HH: Reading JK: Conceptualization, Data Curation, Investigation, Methodology, Software. BS: Software LD: Software IIM: Reading, Conceptualization, Funding JCS: Software, Methodology EA: Reading, Writing AAP: Software MLB: Reading, Writing JH: Writing, Methodology EM: Reading, Writing DPN: Reading, Writing, Methodology JG: Reading, Writing, Methodology HMS: Reading, Writing, FundingCompeting Interest StatementThe authors have declared no competing interest.},
+  creationdate     = {2025-01-27T09:08:10},
+  doi              = {10.1101/2025.01.16.633337},
+  elocation-id     = {2025.01.16.633337},
+  eprint           = {https://www.biorxiv.org/content/early/2025/01/20/2025.01.16.633337.full.pdf},
+  modificationdate = {2025-01-27T09:08:41},
+  publisher        = {Cold Spring Harbor Laboratory},
+  url              = {https://www.biorxiv.org/content/early/2025/01/20/2025.01.16.633337},
 }
 
 @Comment{jabref-meta: databaseType:bibtex;}
