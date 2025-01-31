@@ -2292,9 +2292,29 @@ class SbmlImporter:
 
         sym_math, rateof_to_dummy = _rateof_to_dummy(sym_math)
 
-        for species_id, species in self.symbols[SymbolId.SPECIES].items():
-            if "init" in species:
-                sym_math = smart_subs(sym_math, species_id, species["init"])
+        # we can't rely on anything else being properly initialized at this point, so we need to
+        # compute all initial values from scratch, recursively
+        for var in sym_math.free_symbols:
+            element_id = str(var)
+            # already recursive since _get_element_initial_assignment calls _make_initial
+            if (
+                ia := self._get_element_initial_assignment(element_id)
+            ) is not None:
+                sym_math = sym_math.subs(var, ia)
+            elif (species := self.sbml.getSpecies(element_id)) is not None:
+                # recursive!
+                init = self._make_initial(get_species_initial(species))
+                sym_math = sym_math.subs(var, init)
+            elif var in self.symbols[SymbolId.SPECIES]:
+                sym_math = sym_math.subs(
+                    var, self.symbols[SymbolId.SPECIES][var]["init"]
+                )
+            elif (
+                element := self.sbml.getElementBySId(element_id)
+            ) and self.is_rate_rule_target(element):
+                # no need to recurse here, as value is numeric
+                init = sp.Float(element.getValue())
+                sym_math = sym_math.subs(var, init)
 
         sym_math = smart_subs(sym_math, sbml_time_symbol, sp.Float(0))
 
