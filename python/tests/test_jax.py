@@ -194,6 +194,8 @@ def check_fields_jax(
         "ts_posteq": jnp.array(ts_posteq),
         "my": jnp.array(my),
         "iys": jnp.array(iys),
+        "ops": jnp.zeros((*my.shape[:2], 0)),
+        "nps": jnp.zeros((*my.shape[:2], 0)),
         "iy_trafos": jnp.array(iy_trafos),
         "x_preeq": jnp.array([]),
         "solver": diffrax.Kvaerno5(),

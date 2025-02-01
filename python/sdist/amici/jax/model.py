@@ -43,7 +43,7 @@ class JAXModel(eqx.Module):
         Path to the JAX model file.
     """
 
-    MODEL_API_VERSION = "0.0.2"
+    MODEL_API_VERSION = "0.0.3"
     api_version: str
     jax_py_file: Path
 
@@ -77,7 +77,7 @@ class JAXModel(eqx.Module):
         self,
         t: jt.Float[jt.Array, ""],
         x: jt.Float[jt.Array, "nxs"],
-        pk: jt.Float[jt.Array, "np"],
+        p: jt.Float[jt.Array, "np"],
         tcl: jt.Float[jt.Array, "ncl"],
     ) -> jt.Float[jt.Array, "nw"]:
         """
@@ -85,7 +85,7 @@ class JAXModel(eqx.Module):
 
         :param t: time point
         :param x: state vector
-        :param pk: parameters
+        :param p: parameters
         :param tcl: total values for conservation laws
         :return:
             Expression values.
@@ -93,11 +93,11 @@ class JAXModel(eqx.Module):
         ...
 
     @abstractmethod
-    def _x0(self, pk: jt.Float[jt.Array, "np"]) -> jt.Float[jt.Array, "nx"]:
+    def _x0(self, p: jt.Float[jt.Array, "np"]) -> jt.Float[jt.Array, "nx"]:
         """
         Compute the initial state vector.
 
-        :param pk: parameters
+        :param p: parameters
         """
         ...
 
@@ -133,14 +133,14 @@ class JAXModel(eqx.Module):
 
     @abstractmethod
     def _tcl(
-        self, x: jt.Float[jt.Array, "nx"], pk: jt.Float[jt.Array, "np"]
+        self, x: jt.Float[jt.Array, "nx"], p: jt.Float[jt.Array, "np"]
     ) -> jt.Float[jt.Array, "ncl"]:
         """
         Compute the total values for conservation laws.
 
         :param x:
             state vector
-        :param pk:
+        :param p:
             parameters
         :return:
             total values for conservation laws
@@ -152,8 +152,9 @@ class JAXModel(eqx.Module):
         self,
         t: jt.Float[jt.Scalar, ""],
         x: jt.Float[jt.Array, "nxs"],
-        pk: jt.Float[jt.Array, "np"],
+        p: jt.Float[jt.Array, "np"],
         tcl: jt.Float[jt.Array, "ncl"],
+        op: jt.Float[jt.Array, "ny"],
     ) -> jt.Float[jt.Array, "ny"]:
         """
         Compute the observables.
@@ -162,10 +163,12 @@ class JAXModel(eqx.Module):
             time point
         :param x:
             state vector
-        :param pk:
+        :param p:
             parameters
         :param tcl:
             total values for conservation laws
+        :param op:
+            observables parameters
         :return:
             observables
         """
@@ -173,15 +176,20 @@ class JAXModel(eqx.Module):
 
     @abstractmethod
     def _sigmay(
-        self, y: jt.Float[jt.Array, "ny"], pk: jt.Float[jt.Array, "np"]
+        self,
+        y: jt.Float[jt.Array, "ny"],
+        p: jt.Float[jt.Array, "np"],
+        np: jt.Float[jt.Array, "ny"],
     ) -> jt.Float[jt.Array, "ny"]:
         """
         Compute the standard deviations of the observables.
 
         :param y:
             observables
-        :param pk:
+        :param p:
             parameters
+        :param np:
+            noise parameters
         :return:
             standard deviations of the observables
         """
@@ -192,10 +200,12 @@ class JAXModel(eqx.Module):
         self,
         t: jt.Float[jt.Scalar, ""],
         x: jt.Float[jt.Array, "nxs"],
-        pk: jt.Float[jt.Array, "np"],
+        p: jt.Float[jt.Array, "np"],
         tcl: jt.Float[jt.Array, "ncl"],
         my: jt.Float[jt.Array, ""],
         iy: jt.Int[jt.Array, ""],
+        op: jt.Float[jt.Array, "ny"],
+        np: jt.Float[jt.Array, "ny"],
     ) -> jt.Float[jt.Scalar, ""]:
         """
         Compute the negative log-likelihood of the observable for the specified observable index.
@@ -204,7 +214,7 @@ class JAXModel(eqx.Module):
             time point
         :param x:
             state vector
-        :param pk:
+        :param p:
             parameters
         :param tcl:
             total values for conservation laws
@@ -212,6 +222,10 @@ class JAXModel(eqx.Module):
             observed data
         :param iy:
             observable index
+        :param op:
+            observables parameters
+        :param np:
+            noise parameters
         :return:
             log-likelihood of the observable
         """
@@ -377,6 +391,8 @@ class JAXModel(eqx.Module):
         tcl: jt.Float[jt.Array, "ncl"],
         mys: jt.Float[jt.Array, "nt"],
         iys: jt.Int[jt.Array, "nt"],
+        ops: jt.Float[jt.Array, "nt *nop"],
+        nps: jt.Float[jt.Array, "nt *nnp"],
     ) -> jt.Float[jt.Array, "nt"]:
         """
         Compute the negative log-likelihood for each observable.
@@ -393,11 +409,15 @@ class JAXModel(eqx.Module):
             observed data
         :param iys:
             observable indices
+        :param ops:
+            observables parameters
+        :param nps:
+            noise parameters
         :return:
             negative log-likelihoods of the observables
         """
-        return jax.vmap(self._nllh, in_axes=(0, 0, None, None, 0, 0))(
-            ts, xs, p, tcl, mys, iys
+        return jax.vmap(self._nllh, in_axes=(0, 0, None, None, 0, 0, 0, 0))(
+            ts, xs, p, tcl, mys, iys, ops, nps
         )
 
     def _ys(
@@ -407,6 +427,7 @@ class JAXModel(eqx.Module):
         p: jt.Float[jt.Array, "np"],
         tcl: jt.Float[jt.Array, "ncl"],
         iys: jt.Float[jt.Array, "nt"],
+        ops: jt.Float[jt.Array, "nt *nop"],
     ) -> jt.Int[jt.Array, "nt"]:
         """
         Compute the observables.
@@ -421,13 +442,17 @@ class JAXModel(eqx.Module):
             total values for conservation laws
         :param iys:
             observable indices
+        :param ops:
+            observables parameters
         :return:
             observables
         """
         return jax.vmap(
-            lambda t, x, p, tcl, iy: self._y(t, x, p, tcl).at[iy].get(),
-            in_axes=(0, 0, None, None, 0),
-        )(ts, xs, p, tcl, iys)
+            lambda t, x, p, tcl, iy, op: self._y(t, x, p, tcl, op)
+            .at[iy]
+            .get(),
+            in_axes=(0, 0, None, None, 0, 0),
+        )(ts, xs, p, tcl, iys, ops)
 
     def _sigmays(
         self,
@@ -436,6 +461,8 @@ class JAXModel(eqx.Module):
         p: jt.Float[jt.Array, "np"],
         tcl: jt.Float[jt.Array, "ncl"],
         iys: jt.Int[jt.Array, "nt"],
+        ops: jt.Float[jt.Array, "nt *nop"],
+        nps: jt.Float[jt.Array, "nt *nnp"],
     ):
         """
         Compute the standard deviations of the observables.
@@ -450,15 +477,21 @@ class JAXModel(eqx.Module):
             total values for conservation laws
         :param iys:
             observable indices
+        :param ops:
+            observables parameters
+        :param nps:
+            noise parameters
         :return:
             standard deviations of the observables
         """
         return jax.vmap(
-            lambda t, x, p, tcl, iy: self._sigmay(self._y(t, x, p, tcl), p)
+            lambda t, x, p, tcl, iy, op, np: self._sigmay(
+                self._y(t, x, p, tcl, op), p, np
+            )
             .at[iy]
             .get(),
-            in_axes=(0, 0, None, None, 0),
-        )(ts, xs, p, tcl, iys)
+            in_axes=(0, 0, None, None, 0, 0, 0),
+        )(ts, xs, p, tcl, iys, ops, nps)
 
     @eqx.filter_jit
     def simulate_condition(
@@ -469,6 +502,8 @@ class JAXModel(eqx.Module):
         my: jt.Float[jt.Array, "nt"],
         iys: jt.Int[jt.Array, "nt"],
         iy_trafos: jt.Int[jt.Array, "nt"],
+        ops: jt.Float[jt.Array, "nt *nop"],
+        nps: jt.Float[jt.Array, "nt *nnp"],
         solver: diffrax.AbstractSolver,
         controller: diffrax.AbstractStepSizeController,
         adjoint: diffrax.AbstractAdjoint,
@@ -497,13 +532,12 @@ class JAXModel(eqx.Module):
             observed data
         :param iys:
             indices of the observables according to ordering in :ivar observable_ids:
-        :param x_preeq:
-            initial state vector for pre-equilibration. If not provided, the initial state vector is computed using
-            :meth:`_x0`.
-        :param mask_reinit:
-            mask for re-initialization. If `True`, the corresponding state variable is re-initialized.
-        :param x_reinit:
-            re-initialized state vector. If not provided, the state vector is not re-initialized.
+        :param iy_trafos:
+            indices of transformations for observables
+        :param ops:
+            observables parameters
+        :param nps:
+            noise parameters
         :param solver:
             ODE solver
         :param controller:
@@ -515,13 +549,20 @@ class JAXModel(eqx.Module):
             event function for steady state. See :func:`diffrax.steady_state_event` for details.
         :param max_steps:
             maximum number of solver steps
-        :param ret:
-            which output to return. See :class:`ReturnValue` for available options.
+        :param x_preeq:
+            initial state vector for pre-equilibration. If not provided, the initial state vector is computed using
+            :meth:`_x0`.
+        :param mask_reinit:
+            mask for re-initialization. If `True`, the corresponding state variable is re-initialized.
+        :param x_reinit:
+            re-initialized state vector. If not provided, the state vector is not re-initialized.
         :param ts_mask:
             mask to remove (padded) time points. If `True`, the corresponding time point is used for the evaluation of
             the output. Only applied if ret is ReturnValue.llh, ReturnValue.nllhs, ReturnValue.res, or ReturnValue.chi2.
+        :param ret:
+            which output to return. See :class:`ReturnValue` for available options.
         :return:
-            output according to `ret` and statistics
+            output according to `ret` and general results/statistics
         """
         if x_preeq.shape[0]:
             x = x_preeq
@@ -578,7 +619,7 @@ class JAXModel(eqx.Module):
 
         x = jnp.concatenate((x_dyn, x_posteq), axis=0)
 
-        nllhs = self._nllhs(ts, x, p, tcl, my, iys)
+        nllhs = self._nllhs(ts, x, p, tcl, my, iys, ops, nps)
         nllhs = jnp.where(ts_mask, nllhs, 0.0)
         llh = -jnp.sum(nllhs)
 
@@ -598,9 +639,9 @@ class JAXModel(eqx.Module):
         elif ret == ReturnValue.x_solver:
             output = x
         elif ret == ReturnValue.y:
-            output = self._ys(ts, x, p, tcl, iys)
+            output = self._ys(ts, x, p, tcl, iys, ops)
         elif ret == ReturnValue.sigmay:
-            output = self._sigmays(ts, x, p, tcl, iys)
+            output = self._sigmays(ts, x, p, tcl, iys, ops, nps)
         elif ret == ReturnValue.x0:
             output = self._x_rdata(x[0, :], tcl)
         elif ret == ReturnValue.x0_solver:
@@ -616,10 +657,10 @@ class JAXModel(eqx.Module):
                 .at[iy_trafo]
                 .get(),
             )
-            ys_obj = obs_trafo(self._ys(ts, x, p, tcl, iys), iy_trafos)
+            ys_obj = obs_trafo(self._ys(ts, x, p, tcl, iys, ops), iy_trafos)
             m_obj = obs_trafo(my, iy_trafos)
             if ret == ReturnValue.chi2:
-                sigma_obj = self._sigmays(ts, x, p, tcl, iys)
+                sigma_obj = self._sigmays(ts, x, p, tcl, iys, ops, nps)
                 chi2 = jnp.square((ys_obj - m_obj) / sigma_obj)
                 chi2 = jnp.where(ts_mask, chi2, 0.0)
                 output = jnp.sum(chi2)

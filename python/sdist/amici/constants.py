@@ -34,3 +34,5 @@ class SymbolId(str, enum.Enum):
     SIGMAZ = "sigmaz"
     LLHZ = "llhz"
     LLHRZ = "llhrz"
+    NOISE_PARAMETER = "noise_parameter"
+    OBSERVABLE_PARAMETER = "observable_parameter"

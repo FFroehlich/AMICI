@@ -64,28 +64,30 @@ class JAXModel_TPL_MODEL_NAME(JAXModel):
 
         return TPL_TOTAL_CL_RET
 
-    def _y(self, t, x, p, tcl):
+    def _y(self, t, x, p, tcl, op):
         TPL_X_SYMS = x
         TPL_P_SYMS = p
         TPL_W_SYMS = self._w(t, x, p, tcl)
+        TPL_OP_SYMS = op
 
         TPL_Y_EQ
 
         return TPL_Y_RET
 
-    def _sigmay(self, y, p):
+    def _sigmay(self, y, p, np):
         TPL_P_SYMS = p
 
         TPL_Y_SYMS = y
+        TPL_NP_SYMS = np
 
         TPL_SIGMAY_EQ
 
         return TPL_SIGMAY_RET
 
-    def _nllh(self, t, x, p, tcl, my, iy):
-        y = self._y(t, x, p, tcl)
+    def _nllh(self, t, x, p, tcl, my, iy, op, np):
+        y = self._y(t, x, p, tcl, op)
         TPL_Y_SYMS = y
-        TPL_SIGMAY_SYMS = self._sigmay(y, p)
+        TPL_SIGMAY_SYMS = self._sigmay(y, p, np)
 
         TPL_JY_EQ
 

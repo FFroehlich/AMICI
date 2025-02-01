@@ -5,6 +5,7 @@ parameters, correctness of the gradient computation, and simulation times
 for a subset of the benchmark problems.
 """
 
+import copy
 from functools import partial
 from pathlib import Path
 
@@ -245,17 +246,18 @@ def benchmark_problem(request):
     the benchmark problem collection."""
     problem_id = request.param
     petab_problem = benchmark_models_petab.get_problem(problem_id)
+    flat_petab_problem = copy.deepcopy(petab_problem)
     if measurement_table_has_timepoint_specific_mappings(
         petab_problem.measurement_df,
     ):
-        petab.flatten_timepoint_specific_output_overrides(petab_problem)
+        petab.flatten_timepoint_specific_output_overrides(flat_petab_problem)
 
     # Setup AMICI objects.
     amici_model = import_petab_problem(
-        petab_problem,
+        flat_petab_problem,
         model_output_dir=benchmark_outdir / problem_id,
     )
-    return problem_id, petab_problem, amici_model
+    return problem_id, flat_petab_problem, petab_problem, amici_model
 
 
 @pytest.mark.filterwarnings(
@@ -272,7 +274,9 @@ def test_jax_llh(benchmark_problem):
     jax.config.update("jax_enable_x64", True)
     from beartype import beartype
 
-    problem_id, petab_problem, amici_model = benchmark_problem
+    problem_id, flat_petab_problem, petab_problem, amici_model = (
+        benchmark_problem
+    )
 
     amici_solver = amici_model.getSolver()
     cur_settings = settings[problem_id]
@@ -282,7 +286,7 @@ def test_jax_llh(benchmark_problem):
 
     simulate_amici = partial(
         simulate_petab,
-        petab_problem=petab_problem,
+        petab_problem=flat_petab_problem,
         amici_model=amici_model,
         solver=amici_solver,
         scaled_parameters=True,
@@ -294,7 +298,7 @@ def test_jax_llh(benchmark_problem):
 
     problem_parameters = None
     if problem_id in problems_for_gradient_check:
-        point = petab_problem.x_nominal_free_scaled
+        point = flat_petab_problem.x_nominal_free_scaled
         for _ in range(20):
             amici_solver.setSensitivityMethod(amici.SensitivityMethod.adjoint)
             amici_solver.setSensitivityOrder(amici.SensitivityOrder.first)
@@ -306,7 +310,9 @@ def test_jax_llh(benchmark_problem):
             )
             point += point_noise  # avoid small gradients at nominal value
 
-            problem_parameters = dict(zip(petab_problem.x_free_ids, point))
+            problem_parameters = dict(
+                zip(flat_petab_problem.x_free_ids, point)
+            )
 
             r_amici = simulate_amici(
                 problem_parameters=problem_parameters,
@@ -318,6 +324,12 @@ def test_jax_llh(benchmark_problem):
     else:
         r_amici = simulate_amici()
     llh_amici = r_amici[LLH]
+
+    if problem_id == "Zhao_QuantBiol2020":
+        # temp workaround for https://github.com/Benchmarking-Initiative/Benchmark-Models-PEtab/pull/261
+        petab_problem.observable_df.loc[
+            "observable_unquarantined_infected", petab.NOISE_FORMULA
+        ] = "noiseParameter1_observable_unquarantined_infected"
 
     jax_model = import_petab_problem(
         petab_problem,
@@ -372,7 +384,7 @@ def test_nominal_parameters_llh(benchmark_problem):
 
     Also check that the simulation time is within the reference range.
     """
-    problem_id, petab_problem, amici_model = benchmark_problem
+    problem_id, petab_problem, _, amici_model = benchmark_problem
     if problem_id not in problems_for_llh_check:
         pytest.skip("Excluded from log-likelihood check.")
 
@@ -526,7 +538,7 @@ def test_nominal_parameters_llh(benchmark_problem):
 def test_benchmark_gradient(
     benchmark_problem, scale, sensitivity_method, request
 ):
-    problem_id, petab_problem, amici_model = benchmark_problem
+    problem_id, petab_problem, _, amici_model = benchmark_problem
     if problem_id not in problems_for_gradient_check:
         pytest.skip("Excluded from gradient check.")
 

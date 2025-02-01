@@ -194,7 +194,18 @@ class ODEExporter:
             "x_rdata",
             "total_cl",
         )
-        sym_names = ("p", "x", "tcl", "w", "my", "y", "sigmay", "x_rdata")
+        sym_names = (
+            "p",
+            "np",
+            "op",
+            "x",
+            "tcl",
+            "w",
+            "my",
+            "y",
+            "sigmay",
+            "x_rdata",
+        )
 
         indent = 8
 

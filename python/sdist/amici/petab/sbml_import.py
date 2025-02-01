@@ -1,4 +1,6 @@
 import logging
+import re
+
 import math
 import os
 import tempfile
@@ -147,7 +149,7 @@ def _workaround_initial_states(
 
 
 def _workaround_observable_parameters(
-    observables, sigmas, sbml_model, output_parameter_defaults
+    observables, sigmas, sbml_model, output_parameter_defaults, jax=False
 ):
     # TODO: adding extra output parameters is currently not supported,
     #  so we add any output parameters to the SBML model.
@@ -165,7 +167,25 @@ def _workaround_observable_parameters(
         )
         for free_sym in free_syms:
             sym = str(free_sym)
-            if (
+            if jax and (m := re.match(r"(noiseParameter\d+)_(\w+)", sym)):
+                # group1 is the noise parameter, group2 is the observable, don't add to sbml but replace with generic
+                # noise parameter
+                sigmas[m.group(2)] = str(
+                    sp.sympify(sigmas[m.group(2)], locals=_clash).subs(
+                        free_sym, sp.Symbol(m.group(1))
+                    )
+                )
+            elif jax and (
+                m := re.match(r"(observableParameter\d+)_(\w+)", sym)
+            ):
+                # group1 is the noise parameter, group2 is the observable, don't add to sbml but replace with generic
+                # observable parameter
+                observables[m.group(2)]["formula"] = str(
+                    sp.sympify(
+                        observables[m.group(2)]["formula"], locals=_clash
+                    ).subs(free_sym, sp.Symbol(m.group(1)))
+                )
+            elif (
                 sbml_model.getElementBySId(sym) is None
                 and sym != "time"
                 and sym not in observables
@@ -317,7 +337,8 @@ def import_model_sbml(
         )
     )
     if (
-        petab_problem.measurement_df is not None
+        not jax
+        and petab_problem.measurement_df is not None
         and petab.lint.measurement_table_has_timepoint_specific_mappings(
             petab_problem.measurement_df,
             allow_scalar_numeric_noise_parameters=allow_n_noise_pars,
@@ -346,8 +367,9 @@ def import_model_sbml(
         )
 
     _workaround_observable_parameters(
-        observables, sigmas, sbml_model, output_parameter_defaults
+        observables, sigmas, sbml_model, output_parameter_defaults, jax=jax
     )
+
     if not jax:
         fixed_parameters = _workaround_initial_states(
             petab_problem=petab_problem,
