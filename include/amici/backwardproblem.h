@@ -71,6 +71,12 @@ class BackwardProblem {
     AmiVector const& getAdjointState() const { return xB_; }
 
     /**
+     * @brief Accessor for dxB
+     * @return xB
+     */
+    AmiVector const& getAdjointStateDerivative() const { return dxB_; }
+
+    /**
      * @brief Accessor for xQB
      * @return xQB
      */

@@ -126,6 +126,7 @@ ExpData::ExpData(
     }
 
     id = rdata.id;
+    initialization_id = rdata.initialization_id;
 }
 
 void ExpData::setTimepoints(std::vector<realtype> const& ts) {
@@ -384,6 +385,11 @@ void ExpData::checkEventsDimension(
             fieldname, nmaxevent_, nztrue_, input.size()
         );
 }
+
+bool ExpData::isEquilibration() const {
+    return ts_.size() == 1 && std::isinf(ts_[0]);
+}
+
 
 void checkSigmaPositivity(
     std::vector<realtype> const& sigmaVector, char const* vectorName

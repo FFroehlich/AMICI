@@ -39,6 +39,20 @@ std::vector<std::unique_ptr<ReturnData>> runAmiciSimulations(
 );
 
 /**
+ * @brief Same as runAmiciSimulation, but for a timeseries of ExpData instances.
+ *
+ * @param solver Solver instance
+ * @param edatas experimental data objects
+ * @param model model specification object
+ * @param failfast flag to allow early termination
+ * @return vector of pointers to return data objects
+ */
+std::vector<std::unique_ptr<ReturnData>> runAmiciSimulationsTimeseries(
+    Solver const& solver, std::vector<ExpData*> const& edatas,
+    Model const& model, bool failfast
+);
+
+/**
  * @brief Get the string representation of the given simulation status code
  * (see ReturnData::status).
  * @param status Status code
