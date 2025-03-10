@@ -29,7 +29,16 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - uses: actions/checkout@v4
+    - name: Checkout code (scheduled)
+      if: github.event_name == 'schedule'
+      uses: actions/checkout@v4
+      with:
+        ref: develop
+
+    - name: Checkout code (manual, push, pull request)
+      if: github.event_name != 'schedule'
+      uses: actions/checkout@v4
+
     - run: git fetch --prune --unshallow
 
     - name: Install apt dependencies

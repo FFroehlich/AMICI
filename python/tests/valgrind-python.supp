@@ -1036,3 +1036,17 @@
    fun:_PyObject_MakeTpCall
    fun:_PyEval_EvalFrameDefault
 }
+
+{
+   ?
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:*alloc
+   ...
+   fun:setup_readline
+   fun:PyInit_readline
+   fun:_PyImport_LoadDynamicModuleWithSpec
+   fun:_imp_create_dynamic_impl
+   fun:_imp_create_dynamic
+   ...
+}
