@@ -216,7 +216,7 @@ ref = ret.stdout.rstrip().decode()
 nbsphinx_prolog = (
     f"{{% set {ref=} %}}"
     r"""
-    {% set docname = "documentation/" + env.doc2path(env.docname, base=False)|string %}
+    {% set docname = "doc/" + env.doc2path(env.docname, base=False)|string %}
     .. raw:: html
 
         <div class="note">
@@ -600,9 +600,9 @@ def process_signature(
 # this code fixes references in symlinked md files in documentation folder
 # link replacements must be in env.domains['std'].labels
 doclinks = {
-    "documentation/development": "/development.md",
-    "documentation/CI": "/ci.md",
-    "documentation/code_review_guide": "/code_review_guide.md",
+    "doc/development": "/development.md",
+    "doc/CI": "/ci.md",
+    "doc/code_review_guide": "/code_review_guide.md",
 }
 
 

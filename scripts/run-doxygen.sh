@@ -6,6 +6,9 @@ set -x
 SCRIPT_PATH=$(dirname $BASH_SOURCE)
 AMICI_PATH=$(cd $SCRIPT_PATH/.. && pwd)
 
+OUTDIR="${AMICI_PATH}/doc/build_doxygen"
+mkdir -p "$OUTDIR"
+
 # Set up Matlab filter
 cd ${AMICI_PATH}
 scripts/downloadAndBuildMtocpp.sh
@@ -17,7 +20,7 @@ cp "${MTOC_CONFIG_PATH}/Doxyfile.template" "${DOXYFILE}"
 DOXY_WARNING_FILE=${AMICI_PATH}/matlab/mtoc/warnings.log
 
 # Replace some template values
-sed -i -e "s#_OutputDir_#$AMICI_PATH/doc#g" ${DOXYFILE}
+sed -i -e "s#_OutputDir_#$OUTDIR#g" ${DOXYFILE}
 sed -i -e "s#_SourceDir_#$AMICI_PATH#g" ${DOXYFILE}
 sed -i -e "s#_ConfDir_#${MTOC_CONFIG_PATH}#g" ${DOXYFILE}
 sed -i -e "s#_ProjectName_#AMICI#g" ${DOXYFILE}
@@ -45,7 +48,7 @@ rm "${DOXYFILE}"
 rm "${MTOC_CONFIG_PATH}/mtocpp_filter.sh"
 
 # Build pdf
-cd "${AMICI_PATH}/doc/latex"
+cd "${OUTDIR}/latex"
 make
 cp ./refman.pdf "${AMICI_PATH}/AMICI_guide.pdf"
 

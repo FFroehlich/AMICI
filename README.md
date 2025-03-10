@@ -1,4 +1,4 @@
-<img src="https://raw.githubusercontent.com/AMICI-dev/AMICI/master/documentation/gfx/banner.png" height="60" align="left" alt="AMICI logo">
+<img src="https://raw.githubusercontent.com/AMICI-dev/AMICI/master/doc/gfx/banner.png" height="60" align="left" alt="AMICI logo">
 
 ## Advanced Multilanguage Interface for CVODES and IDAS
 
@@ -73,7 +73,7 @@ are derived symbolically and C++ code is generated. This code is then
 compiled into a C++ library, a Python module, or a Matlab `.mex` file and
 is then used for model simulation.
 
-![AMICI workflow](https://raw.githubusercontent.com/AMICI-dev/AMICI/master/documentation/gfx/amici_workflow.png)
+![AMICI workflow](https://raw.githubusercontent.com/AMICI-dev/AMICI/master/doc/gfx/amici_workflow.png)
 
 ## Getting started
 
@@ -86,8 +86,8 @@ There are also instructions for using AMICI inside
 [containers](https://github.com/AMICI-dev/AMICI/tree/master/container).
 
 To get you started with Python-AMICI, the best way might be checking out this
-[Jupyter notebook](https://github.com/AMICI-dev/AMICI/blob/master/documentation/GettingStarted.ipynb)
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/AMICI-dev/AMICI/develop?labpath=documentation%2FGettingStarted.ipynb).
+[Jupyter notebook](https://github.com/AMICI-dev/AMICI/blob/master/doc/GettingStarted.ipynb)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/AMICI-dev/AMICI/develop?labpath=doc%2FGettingStarted.ipynb).
 
 To get started with Matlab-AMICI, various examples are available
 in [matlab/examples/](https://github.com/AMICI-dev/AMICI/tree/master/matlab/examples).
@@ -147,11 +147,11 @@ When using AMICI in your project, please cite
 ```
 
 When presenting work that employs AMICI, feel free to use one of the icons in
-[documentation/gfx/](https://github.com/AMICI-dev/AMICI/tree/master/documentation/gfx),
+[doc/gfx/](https://github.com/AMICI-dev/AMICI/tree/master/doc/gfx),
 which are available under a
-[CC0](https://github.com/AMICI-dev/AMICI/tree/master/documentation/gfx/LICENSE.md)
+[CC0](https://github.com/AMICI-dev/AMICI/tree/master/doc/gfx/LICENSE.md)
 license:
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/AMICI-dev/AMICI/master/documentation/gfx/logo_text.png" height="75" alt="AMICI Logo">
+  <img src="https://raw.githubusercontent.com/AMICI-dev/AMICI/master/doc/gfx/logo_text.png" height="75" alt="AMICI Logo">
 </p>
