@@ -20,10 +20,6 @@ AMICI Python API
    amici.petab.sbml_import
    amici.petab.simulations
    amici.petab.simulator
-   amici.petab_import
-   amici.petab_import_pysb
-   amici.petab_objective
-   amici.petab_simulate
    amici.import_utils
    amici.jax
    amici.de_export
@@ -33,7 +29,6 @@ AMICI Python API
    amici.pandas
    amici.logging
    amici.gradient_check
-   amici.parameter_mapping
    amici.conserved_quantities_demartino
    amici.conserved_quantities_rref
    amici.numpy
