@@ -398,9 +398,14 @@ class ExpData : public SimulationParameters {
     void clear_observations();
 
     /**
-     * @brief Arbitrary (not necessarily unique) identifier.
+     * @brief Unique identifier.
      */
     std::string id;
+
+    /**
+     * @brief Unique Identifier of the ExpData to use for initialization.
+     */
+    std::string initialization_id;
 
   protected:
     /**
@@ -439,6 +444,12 @@ class ExpData : public SimulationParameters {
     void checkEventsDimension(
         std::vector<realtype> const& input, char const* fieldname
     ) const;
+
+    /**
+     * @brief check whether this instance implements only equilibration
+     * without simulation
+     */
+    bool isEquilibration() const;
 
     /** @brief number of observables */
     int nytrue_{0};
@@ -480,6 +491,7 @@ inline bool operator==(ExpData const& lhs, ExpData const& rhs) {
     return *dynamic_cast<SimulationParameters const*>(&lhs)
                == *dynamic_cast<SimulationParameters const*>(&rhs)
            && lhs.id == rhs.id && lhs.nytrue_ == rhs.nytrue_
+           && lhs.initialization_id == rhs.initialization_id
            && lhs.nztrue_ == rhs.nztrue_ && lhs.nmaxevent_ == rhs.nmaxevent_
            && is_equal(lhs.observed_data_, rhs.observed_data_)
            && is_equal(lhs.observed_data_std_dev_, rhs.observed_data_std_dev_)
