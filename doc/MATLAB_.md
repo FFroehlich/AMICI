@@ -191,11 +191,11 @@ from within Matlab. This not quite comfortable yet, but it is possible.
 Here for proof of concept:
 
 * Install the python package as described in the documentation
-* Ensure `pyversion` shows the correct python version (3.6 or 3.7)
+* Ensure `pyversion` shows the correct python version (>= 3.10)
 * Then, from within the AMICI `matlab/` directory:
 
     ```
-    sbml_importer = py.amici.SbmlImporter('../python/examples/example_steadystate/model_steadystate_scaled.xml')
+    sbml_importer = py.amici.SbmlImporter('../doc/examples/getting_started/model_steadystate_scaled.xml')
     sbml_importer.sbml2amici('steadystate', 'steadystate_example_from_python')
     model = py.steadystate.getModel()
     solver = model.getSolver()

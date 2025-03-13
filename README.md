@@ -86,8 +86,8 @@ There are also instructions for using AMICI inside
 [containers](https://github.com/AMICI-dev/AMICI/tree/master/container).
 
 To get you started with Python-AMICI, the best way might be checking out this
-[Jupyter notebook](https://github.com/AMICI-dev/AMICI/blob/master/doc/GettingStarted.ipynb)
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/AMICI-dev/AMICI/develop?labpath=doc%2FGettingStarted.ipynb).
+[Jupyter notebook](https://github.com/AMICI-dev/AMICI/blob/master/doc/examples/getting_started/GettingStarted.ipynb)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/AMICI-dev/AMICI/develop?labpath=doc%2Fexamples%2Fgetting_started%2FGettingStarted.ipynb).
 
 To get started with Matlab-AMICI, various examples are available
 in [matlab/examples/](https://github.com/AMICI-dev/AMICI/tree/master/matlab/examples).

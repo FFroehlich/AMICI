@@ -9,14 +9,14 @@ Various example notebooks.
 .. toctree::
    :maxdepth: 1
 
-   GettingStarted.ipynb
-   ExampleSteadystate.ipynb
-   petab.ipynb
-   ExampleExperimentalConditions.ipynb
-   ExampleEquilibrationLogic.ipynb
-   example_errors.ipynb
-   example_large_models/example_performance_optimization.ipynb
-   ExampleJax.ipynb
-   ExampleJaxPEtab.ipynb
-   ExampleSplines.ipynb
-   ExampleSplinesSwameye2003.ipynb
+   examples/getting_started/GettingStarted.ipynb
+   examples/getting_started_extended/GettingStartedExtended.ipynb
+   examples/example_petab/petab.ipynb
+   examples/example_presimulation/ExampleExperimentalConditions.ipynb
+   examples/example_steady_states/ExampleEquilibrationLogic.ipynb
+   examples/example_errors.ipynb
+   examples/example_large_models/example_performance_optimization.ipynb
+   examples/example_jax/ExampleJax.ipynb
+   examples/example_jax_petab/ExampleJaxPEtab.ipynb
+   examples/example_splines/ExampleSplines.ipynb
+   examples/example_splines_swameye/ExampleSplinesSwameye2003.ipynb

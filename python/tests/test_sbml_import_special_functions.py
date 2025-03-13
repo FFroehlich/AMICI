@@ -4,8 +4,6 @@ In particular, some of the functions tested here require an installation of
 boost.
 """
 
-import os
-
 import amici
 import numpy as np
 import pytest
@@ -17,6 +15,7 @@ from numpy.testing import (
     assert_array_almost_equal_nulp,
     assert_allclose,
 )
+from conftest import MODEL_STEADYSTATE_SCALED_XML
 from scipy.special import loggamma
 
 
@@ -24,14 +23,7 @@ from scipy.special import loggamma
 def model_special_likelihoods():
     """Test model for special likelihood functions."""
     # load sbml model
-    sbml_file = os.path.join(
-        os.path.dirname(__file__),
-        "..",
-        "examples",
-        "example_steadystate",
-        "model_steadystate_scaled.xml",
-    )
-    sbml_importer = amici.SbmlImporter(sbml_file)
+    sbml_importer = amici.SbmlImporter(MODEL_STEADYSTATE_SCALED_XML)
 
     # define observables
     observables = {
