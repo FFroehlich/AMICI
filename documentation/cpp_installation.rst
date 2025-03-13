@@ -15,7 +15,7 @@ The following section describes building the AMICI C++ library:
 Prerequisites:
 
 * CBLAS compatible BLAS library
-* a C++17 compatible compiler
+* a C++20 compatible compiler
 * a C compiler
 * Optional:
 
